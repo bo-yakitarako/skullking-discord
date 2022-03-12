@@ -1,13 +1,14 @@
-import { Message } from 'discord.js';
+import { Message, TextChannel } from 'discord.js';
 import { Embed } from '..';
 import { Card, generateDeck, shuffle } from './cards';
 import { colors } from './embedColor';
-import { Player, sendCardsHand } from './player';
+import { Player, sendCardsHand, urgeToExpect } from './player';
 
 type Game = {
   status: 'ready' | 'playing' | 'finish';
   players: Player[];
   gameCount: number;
+  playerTurnIndex: number;
   cards: Card[];
   deadCards: Card[];
 };
@@ -36,7 +37,8 @@ const launch = (message: Message) => {
   games[guildId] = {
     status: 'ready',
     players: [],
-    gameCount: 10,
+    gameCount: 1,
+    playerTurnIndex: 0,
     cards,
     deadCards: [],
   };
@@ -56,7 +58,7 @@ const displayTurns = (message: Message) => {
   message.channel.send({ embed });
 };
 
-const dealCards = (message: Message) => {
+const dealCards = async (message: Message) => {
   const game = games[message.guild!.id]!;
   const { players, gameCount, deadCards } = game;
   let { cards } = game;
@@ -65,14 +67,15 @@ const dealCards = (message: Message) => {
     game.cards = [...cards];
     game.deadCards = [];
   }
-  players.forEach((player) => {
+  // eslint-disable-next-line no-restricted-syntax
+  for (const player of players) {
     // spliceは該当箇所を返して元の配列から削除するものなのでこれで配る処理は完了
-    player.cardsHand = cards.splice(0, gameCount); // eslint-disable-line no-param-reassign
-    sendCardsHand(message, player);
-  });
+    player.cardsHand = cards.splice(0, gameCount);
+    await sendCardsHand(message, player); // eslint-disable-line no-await-in-loop
+  }
 };
 
-const start = (message: Message) => {
+const start = async (message: Message) => {
   const guildId = message.guild?.id ?? 'あほのID';
   if (!(guildId in games)) {
     message.channel.send('`!launch`で起動しようね');
@@ -85,5 +88,25 @@ const start = (message: Message) => {
   games[guildId]!.status = 'playing';
   games[guildId]!.players = shuffle(games[guildId]!.players);
   displayTurns(message);
-  dealCards(message);
+  await dealCards(message);
+  message.channel.send('DMで予想した勝利数を教えてちょー');
+  games[guildId]!.players.forEach((player) => {
+    urgeToExpect(message.client, player);
+  });
+};
+
+export const checkEveryPlayerExpectedCount = (
+  channel: TextChannel,
+  players: Player[],
+) => {
+  const fields = players.map(({ name, countExpected }) => ({
+    name: `${name}くん`,
+    value: `${countExpected}回`,
+  }));
+  const embed: Embed = {
+    title: 'みんなの予想回数！',
+    fields,
+    color: colors.info,
+  };
+  channel.send({ embed });
 };
