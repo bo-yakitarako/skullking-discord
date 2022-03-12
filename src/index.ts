@@ -1,5 +1,6 @@
 import { Client } from 'discord.js';
 import { config } from 'dotenv';
+import { gameCommands } from './utility/game';
 
 config();
 
@@ -13,7 +14,7 @@ client.on('message', (message) => {
   if (message.author.bot) {
     return;
   }
-  console.log('あほあほちーん');
+  gameCommands(message);
 });
 
 const TOKEN = process.env.TOKEN as string;
