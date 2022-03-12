@@ -9,7 +9,6 @@ client.on('ready', () => {
   console.log('すかき〜ん');
 });
 
-// eslint-disable-next-line complexity
 client.on('message', (message) => {
   if (message.author.bot) {
     return;
