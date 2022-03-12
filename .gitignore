@@ -1,0 +1,5 @@
+/dist
+*.code-workspace
+/.vscode/sftp.json
+.env
+node_modules

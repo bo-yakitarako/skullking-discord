@@ -1,0 +1,88 @@
+{
+    "root": true,
+    "env": {
+        "browser": true,
+        "es2021": true,
+        "node": true
+    },
+    "extends": [
+        "airbnb-base",
+        "plugin:@typescript-eslint/recommended",
+        "plugin:prettier/recommended",
+        "prettier/@typescript-eslint"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+        "ecmaVersion": 12,
+        "sourceType": "module"
+    },
+    "plugins": [
+        "@typescript-eslint"
+    ],
+    "settings": {
+        "import/resolver": {
+            "node": {
+                "extensions": [".js", ".jsx", ".ts", ".tsx"]
+            }
+        }
+    },
+    "rules": {
+        "import/extensions": ["error", "ignorePackages", {
+            "js": "never",
+            "jsx": "never",
+            "ts": "never",
+            "tsx": "never"
+        }],
+        "complexity": ["error", 11],
+        "max-len": ["error", {
+            "code": 100
+        }],
+        "camelcase": "off",
+        "class-methods-use-this": "off",
+        "lines-between-class-members": "off",
+        "no-console": "off",
+        "no-shadow": "off",
+        "import/prefer-default-export": "off",
+        "import/no-default-export": "error",
+        "no-use-before-define": "off",
+        "react/prop-types": "off",
+        "@typescript-eslint/no-unused-vars": "error",
+        "@typescript-eslint/no-use-before-define": "off",
+        "@typescript-eslint/explicit-module-boundary-types": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
+        "@typescript-eslint/naming-convention": [
+            "error",
+            {
+                "selector": "variable",
+                "format": ["snake_case", "camelCase", "UPPER_CASE", "PascalCase"]
+            },
+            {
+                "selector": "property",
+                "format": ["camelCase", "snake_case"]
+            },
+            {
+                "selector": "typeProperty",
+                "format": ["camelCase", "snake_case", "PascalCase"]
+            },
+            {
+                "selector": "method",
+                "format": ["camelCase"]
+            },
+            {
+                "selector": "class",
+                "format": ["PascalCase"]
+            }
+        ],
+        "prettier/prettier": [
+            "error",
+            {
+                "printWidth": 80,
+                "tabWidth": 2,
+                "trailingComma": "all",
+                "bracketSpacing": true,
+                "singleQuote": true,
+                "semi": true
+            }
+        ]
+    }
+}
