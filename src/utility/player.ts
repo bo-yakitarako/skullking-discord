@@ -1,5 +1,7 @@
 import { Message } from 'discord.js';
-import type { Card } from './cards';
+import { Embed } from '..';
+import { Card, convertCardValue } from './cards';
+import { colors } from './embedColor';
 import { games } from './game';
 
 export type Player = {
@@ -50,4 +52,23 @@ const join = (message: Message) => {
   };
   games[guildId]!.players.push(player);
   message.channel.send(`${player.name}が入ったぞい！`);
+};
+
+export const sendCardsHand = (message: Message, player: Player) => {
+  const members = message.guild!.members!.cache!;
+  const member = members.find((member) => member.id === player.discordId);
+  if (member === undefined) {
+    return;
+  }
+  const fields = player.cardsHand.map((card, index) => {
+    const name = `${index + 1}`;
+    const value = convertCardValue(card);
+    return { name, value, inline: true };
+  });
+  const embed: Embed = {
+    title: '手札',
+    color: colors.info,
+    fields,
+  };
+  member.send({ embed });
 };

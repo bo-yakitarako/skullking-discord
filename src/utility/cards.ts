@@ -20,15 +20,15 @@ const generateBonus = (type: Color | Special, number: number) => {
   return type === 'black' ? 20 : 10;
 };
 
-const shuffle = (cards: Card[]) => {
-  let shuffledCards: Card[] = [];
-  while (cards.length > 0) {
-    const index = Math.floor(Math.random() * cards.length);
-    shuffledCards = [...shuffledCards, cards[index]];
-    cards.splice(index, 1);
+export function shuffle<T>(array: T[]): T[] {
+  let shuffledArray: T[] = [];
+  while (array.length > 0) {
+    const index = Math.floor(Math.random() * array.length);
+    shuffledArray = [...shuffledArray, array[index]];
+    array.splice(index, 1);
   }
-  return shuffledCards;
-};
+  return shuffledArray;
+}
 
 export const generateDeck = () => {
   const colors: Color[] = ['green', 'yellow', 'purple', 'black'];
@@ -57,5 +57,31 @@ export const generateDeck = () => {
     { type: 'escape', escapeType: 'kraken' },
   ];
 
-  return shuffle([...colorCards, ...specialCards]);
+  return shuffle([...colorCards, ...specialCards] as Card[]);
+};
+
+const cardValue = {
+  green: ':green_square:',
+  yellow: ':yellow_square:',
+  purple: ':purple_square:',
+  black: ':black_large_square:',
+  skullking: 'スカルキング :skull:',
+  pirates: '海賊 :crossed_swords:',
+  mermaids: 'マーメイド :mermaid:',
+  escape: '逃走 :runner:',
+  gold: '略奪品 :gem:',
+  tigres: 'ティグレス :woman_superhero:',
+  kraken: 'クラーケン :octopus:',
+};
+
+export const convertCardValue = (card: Card) => {
+  if ('color' in card) {
+    return `${cardValue[card.color]}  ${card.number}`;
+  }
+  const { type, escapeType } = card;
+  if (escapeType !== undefined) {
+    const prop = escapeType === 'standard' ? 'escape' : escapeType;
+    return cardValue[prop];
+  }
+  return cardValue[type];
 };
