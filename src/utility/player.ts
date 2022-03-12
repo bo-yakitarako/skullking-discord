@@ -47,7 +47,7 @@ const join = (message: Message) => {
     return;
   }
   const discordId = message.author.id;
-  if (games[guildId]!.players.some((p) => p.discordId === discordId)) {
+  if (currentPlayers.some((p) => p.discordId === discordId)) {
     message.channel.send('おめぇの席あるから！');
     return;
   }
