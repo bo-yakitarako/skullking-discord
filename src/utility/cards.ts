@@ -1,4 +1,4 @@
-type Color = 'green' | 'yellow' | 'purple' | 'black';
+export type Color = 'green' | 'yellow' | 'purple' | 'black';
 type ColorCard = {
   color: Color;
   number: number;

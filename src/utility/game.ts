@@ -1,8 +1,14 @@
-import { Message, TextChannel, User } from 'discord.js';
+import { Client, Message, TextChannel, User } from 'discord.js';
 import { Embed } from '..';
-import { Card, generateDeck, shuffle } from './cards';
+import { Card, Color, convertCardValue, generateDeck, shuffle } from './cards';
 import { colors } from './embedColor';
-import { Player, sendCardsHand, urgeToExpect } from './player';
+import {
+  Player,
+  sendCardsHand,
+  sendPrivateMessage,
+  sendPublicMessage,
+  urgeToExpect,
+} from './player';
 
 type Game = {
   status: 'ready' | 'expecting' | 'putting' | 'finish';
@@ -10,6 +16,8 @@ type Game = {
   gameCount: number;
   playerTurnIndex: number;
   cards: Card[];
+  currentPutOut: Card[];
+  currentColor: Color | null;
   deadCards: Card[];
 };
 
@@ -40,6 +48,8 @@ const launch = (message: Message) => {
     gameCount: 1,
     playerTurnIndex: 0,
     cards,
+    currentPutOut: [],
+    currentColor: null,
     deadCards: [],
   };
   message.channel.send('すかき〜ん(`!join`で参加しよう)');
@@ -108,4 +118,27 @@ export const checkEveryPlayerExpectedCount = async (
     color: colors.info,
   };
   await channel.send({ embed });
+};
+
+export const putOutCard = async (
+  client: Client,
+  player: Player,
+  putOutIndex: number,
+) => {
+  const { cardsHand, guildId, name } = player;
+  const game = games[guildId]!;
+  const card = cardsHand.splice(putOutIndex, 1)[0];
+  game.currentPutOut.push(card);
+  if ('color' in card && game.currentColor === null) {
+    game.currentColor = card.color;
+  }
+  const embed: Embed = {
+    title: `${name}くんの出したカード`,
+    description: convertCardValue(card),
+    color: colors.info,
+  };
+  for (const p of game.players) {
+    await sendPrivateMessage(client, p, { embed });
+  }
+  await sendPublicMessage(client, player, { embed });
 };
