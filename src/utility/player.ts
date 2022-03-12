@@ -111,7 +111,7 @@ export const urgeToExpect = (client: Client, player: Player) => {
   user.send({ embed });
 };
 
-export const expectWinningCount = (message: Message) => {
+export const expectWinningCount = async (message: Message) => {
   const discordId = message.author.id;
   const player = currentPlayers.find((p) => p.discordId === discordId);
   if (player === undefined) {
@@ -134,15 +134,19 @@ export const expectWinningCount = (message: Message) => {
   player.countExpected = count;
   message.channel.send(`${count}回だねーおっけー`);
   const gamePlayers = games[player.guildId]!.players;
-  if (gamePlayers.every(({ countExpected }) => countExpected !== null)) {
-    const guild = message.client.guilds.cache.get(player.guildId)!;
-    const channel = guild.channels.cache.get(player.channelId)! as TextChannel;
-    channel.send('@here');
-    checkEveryPlayerExpectedCount(channel, gamePlayers);
-    const first = gamePlayers[0];
-    channel.send(`<@!${first.discordId}> おめぇから始めんだぞい！`);
-    urgeToPutDownCard(message.client, first);
+  if (!gamePlayers.every(({ countExpected }) => countExpected !== null)) {
+    return;
   }
+  const guild = message.client.guilds.cache.get(player.guildId)!;
+  const channel = guild.channels.cache.get(player.channelId)! as TextChannel;
+  await checkEveryPlayerExpectedCount(channel, gamePlayers);
+  const first = gamePlayers[0];
+  channel.send(`${first.name}くんから始めんぞい！`);
+  for (const player of gamePlayers) {
+    const user = message.client.users.cache.get(player.discordId)!;
+    await checkEveryPlayerExpectedCount(user, gamePlayers);
+  }
+  urgeToPutDownCard(message.client, first);
 };
 
 export const urgeToPutDownCard = async (client: Client, player: Player) => {

@@ -1,4 +1,4 @@
-import { Message, TextChannel } from 'discord.js';
+import { Message, TextChannel, User } from 'discord.js';
 import { Embed } from '..';
 import { Card, generateDeck, shuffle } from './cards';
 import { colors } from './embedColor';
@@ -67,11 +67,10 @@ const dealCards = async (message: Message) => {
     game.cards = [...cards];
     game.deadCards = [];
   }
-  // eslint-disable-next-line no-restricted-syntax
   for (const player of players) {
     // spliceは該当箇所を返して元の配列から削除するものなのでこれで配る処理は完了
     player.cardsHand = cards.splice(0, gameCount);
-    await sendCardsHand(message, player); // eslint-disable-line no-await-in-loop
+    await sendCardsHand(message, player);
   }
 };
 
@@ -95,8 +94,8 @@ const start = async (message: Message) => {
   });
 };
 
-export const checkEveryPlayerExpectedCount = (
-  channel: TextChannel,
+export const checkEveryPlayerExpectedCount = async (
+  channel: TextChannel | User,
   players: Player[],
 ) => {
   const fields = players.map(({ name, countExpected }) => ({
@@ -108,5 +107,5 @@ export const checkEveryPlayerExpectedCount = (
     fields,
     color: colors.info,
   };
-  channel.send({ embed });
+  await channel.send({ embed });
 };
