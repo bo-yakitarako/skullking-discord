@@ -15,10 +15,21 @@ export type Player = {
   point: number;
 };
 
+const currentPlayers: Player[] = [];
+
 export const playerCommands = (message: Message) => {
   const command = message.content.split(' ');
   if (command[0] === '!join') {
     join(message);
+    return;
+  }
+  if (command[0] === '!check') {
+    const player = currentPlayers.find(
+      (p) => p.discordId === message.author.id,
+    );
+    if (player !== undefined) {
+      sendCardsHand(message, player);
+    }
   }
 };
 
@@ -51,15 +62,11 @@ const join = (message: Message) => {
     point: 0,
   };
   games[guildId]!.players.push(player);
+  currentPlayers.push(player);
   message.channel.send(`${player.name}が入ったぞい！`);
 };
 
-export const sendCardsHand = (message: Message, player: Player) => {
-  const members = message.guild!.members!.cache!;
-  const member = members.find((member) => member.id === player.discordId);
-  if (member === undefined) {
-    return;
-  }
+export const sendCardsHand = async (message: Message, player: Player) => {
   const fields = player.cardsHand.map((card, index) => {
     const name = `${index + 1}`;
     const value = convertCardValue(card);
@@ -70,5 +77,6 @@ export const sendCardsHand = (message: Message, player: Player) => {
     color: colors.info,
     fields,
   };
-  member.send({ embed });
+  const user = await message.client.users.fetch(player.discordId, false);
+  user.send({ embed });
 };
