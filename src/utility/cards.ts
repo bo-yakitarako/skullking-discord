@@ -13,7 +13,7 @@ type SpecialCard = {
 
 export type Card = ColorCard | SpecialCard;
 
-const generate_bonus = (type: Color | Special, number: number) => {
+const generateBonus = (type: Color | Special, number: number) => {
   if (number < 14) {
     return 0;
   }
@@ -30,12 +30,12 @@ const shuffle = (cards: Card[]) => {
   return shuffledCards;
 };
 
-export const generate_deck = () => {
+export const generateDeck = () => {
   const colors: Color[] = ['green', 'yellow', 'purple', 'black'];
   const colorCards = colors.reduce((prev, color) => {
     const numberCards = [...Array(14)].map((_, index) => {
       const number = index + 1;
-      const bonus = generate_bonus(color, number);
+      const bonus = generateBonus(color, number);
       return { color, number, bonus };
     });
     return [...prev, ...numberCards];
