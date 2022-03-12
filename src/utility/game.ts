@@ -5,7 +5,7 @@ import { colors } from './embedColor';
 import { Player, sendCardsHand, urgeToExpect } from './player';
 
 type Game = {
-  status: 'ready' | 'playing' | 'finish';
+  status: 'ready' | 'expecting' | 'putting' | 'finish';
   players: Player[];
   gameCount: number;
   playerTurnIndex: number;
@@ -84,7 +84,7 @@ const start = async (message: Message) => {
     message.channel.send('2人以上参加せんとできんぜよ');
     return;
   }
-  games[guildId]!.status = 'playing';
+  games[guildId]!.status = 'expecting';
   games[guildId]!.players = shuffle(games[guildId]!.players);
   displayTurns(message);
   await dealCards(message);

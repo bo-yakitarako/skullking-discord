@@ -142,6 +142,7 @@ export const expectWinningCount = async (message: Message) => {
   await checkEveryPlayerExpectedCount(channel, gamePlayers);
   const first = gamePlayers[0];
   channel.send(`${first.name}くんから始めんぞい！`);
+  games[player.guildId]!.status = 'putting';
   for (const player of gamePlayers) {
     const user = message.client.users.cache.get(player.discordId)!;
     await checkEveryPlayerExpectedCount(user, gamePlayers);
