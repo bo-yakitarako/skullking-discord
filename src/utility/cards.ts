@@ -90,10 +90,13 @@ export const convertCardValue = (card: Card) => {
   if ('color' in card) {
     return `${cardValue[card.color]}  ${card.number}`;
   }
-  const { type, escapeType } = card;
+  const { type, escapeType, tigresType } = card;
   if (escapeType !== undefined) {
     const prop = escapeType === 'standard' ? 'escape' : escapeType;
     return cardValue[prop];
+  }
+  if (tigresType !== null) {
+    return `${cardValue[type]} (${cardValue[tigresType]})`;
   }
   return cardValue[type];
 };
