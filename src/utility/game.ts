@@ -42,9 +42,14 @@ export const gameCommands = (message: Message) => {
   const command = message.content.split(' ');
   if (command[0] === '!launch') {
     launch(message);
+    return;
   }
   if (command[0] === '!start') {
     start(message);
+    return;
+  }
+  if (command[0] === '!reset') {
+    reset(message);
   }
 };
 
@@ -58,7 +63,7 @@ const launch = (message: Message) => {
   games[guildId] = {
     status: 'ready',
     players: [],
-    gameCount: 2,
+    gameCount: 1,
     playerTurnIndex: 0,
     cards,
     currentPutOut: [],
@@ -92,7 +97,12 @@ const displayTurns = async (message: Message) => {
 };
 
 const dealCards = async (message: Message) => {
-  const game = games[message.guild!.id]!;
+  let guildId = message.guild?.id;
+  if (guildId === undefined) {
+    const p = currentPlayers.find((p) => p.discordId === message.author.id);
+    guildId = p!.guildId;
+  }
+  const game = games[guildId]!;
   const { players, gameCount, deadCards } = game;
   let { cards } = game;
   if (cards.length < players.length * gameCount) {
@@ -246,6 +256,18 @@ const resultOnOneGame = async (message: Message, guildId: string) => {
   });
   game.deadCards = [...game.deadCards, ...deadCards];
   game.gameCount += 1;
+  if (game.gameCount <= 2) {
+    const nextMessage = `第${game.gameCount}戦目やってこー`;
+    await sendAllMessage(message.client, players[0], nextMessage);
+    game.status = 'expecting';
+    await displayTurns(message);
+    await dealCards(message);
+    game.players.forEach((player) => {
+      urgeToExpect(message.client, player);
+    });
+    return;
+  }
+  await finish(message, players[0].guildId);
 };
 
 const nextTurn = async (message: Message, player: Player) => {
@@ -285,4 +307,59 @@ const nextTurn = async (message: Message, player: Player) => {
   const resumeMessage = `${game.players[0].name}くんから再開や〜`;
   await sendAllMessage(message.client, player, resumeMessage);
   await urgeToPutDownCard(message.client, game.players[0]);
+};
+
+const finish = async (message: Message, guildId: string) => {
+  const game = games[guildId]!;
+  const { players } = game;
+  const rankedPlayers = [...players].sort((a, b) => b.point - a.point);
+  const fields = rankedPlayers.map((player, index) => {
+    const { name, point } = player;
+    const sign = point > 0 ? '+' : '';
+    return {
+      name: `${index + 1}位！`,
+      value: `**${name}**: ${sign}${point}点`,
+    };
+  });
+  const embed: Embed = {
+    title: '結果はっぴょおぉ〜〜〜',
+    fields,
+    color: colors.pirates,
+  };
+  await sendAllMessage(message.client, players[0], { embed });
+  players.forEach((p) => {
+    p.point = 0;
+  });
+  game.cards = generateDeck();
+  game.deadCards = [];
+  game.gameCount = 1;
+  game.status = 'ready';
+  const resumeMessage =
+    'またやる場合は鯖のチャンネルで`!start`って打ってね\n' +
+    '自分だけ抜ける場合は`!bye`って打ってね\n' +
+    '完全に終わらせる場合は`!reset`って打ってね';
+  await sendAllMessage(message.client, players[0], resumeMessage);
+};
+
+const reset = async (message: Message) => {
+  let guildId = message.guild?.id;
+  if (guildId === undefined) {
+    const p = currentPlayers.find((p) => p.discordId === message.author.id);
+    guildId = p?.guildId;
+    if (guildId === undefined) {
+      return;
+    }
+  }
+  if (!(guildId in games)) {
+    return;
+  }
+  const game = games[guildId]!;
+  await sendAllMessage(message.client, game.players[0], ':wave:');
+  game.players.forEach((p) => {
+    const index = currentPlayers.findIndex(
+      (cp) => cp.discordId === p.discordId,
+    );
+    currentPlayers.splice(index, 1);
+  });
+  delete games[guildId];
 };

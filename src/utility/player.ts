@@ -29,6 +29,9 @@ export async function sendAllMessage<T>(
   player: Player,
   message: T,
 ) {
+  if (!player) {
+    return;
+  }
   const { players } = games[player.guildId]!;
   for (const p of players) {
     await sendPrivateMessage(client, p, message);
@@ -75,6 +78,10 @@ export const playerCommands = (message: Message) => {
   }
   if (command[0] === '!put') {
     put(message);
+    return;
+  }
+  if (command[0] === '!bye') {
+    bye(message);
     return;
   }
   if (command[0] === '!check') {
@@ -307,4 +314,29 @@ const put = async (message: Message) => {
     card.tigresType = tigresType;
   }
   await putOut(message, inputNumber - 1);
+};
+
+const bye = async (message: Message) => {
+  const index = currentPlayers.findIndex(
+    (p) => p.discordId === message.author.id,
+  );
+  if (index < 0) {
+    return;
+  }
+  const player = currentPlayers[index];
+  const game = games[player.guildId]!;
+  if (game.status !== 'ready') {
+    await sendPrivateMessage(
+      message.client,
+      player,
+      'プレイ中は途中で抜けられないよ><',
+    );
+    return;
+  }
+  game.players.splice(
+    game.players.findIndex((p) => p.discordId === player.discordId),
+    1,
+  );
+  currentPlayers.splice(index, 1);
+  await sendPrivateMessage(message.client, player, ':wave:');
 };
