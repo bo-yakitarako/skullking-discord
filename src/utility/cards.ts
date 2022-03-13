@@ -52,7 +52,7 @@ export const generateDeck = () => {
   const base = { bonus: 0, tigresType: null };
   const specialCards: SpecialCard[] = [
     { type: 'skullking', ...base },
-    ...[...Array(59)].map<SpecialCard>(() => ({ type: 'pirates', ...base })),
+    ...[...Array(5)].map<SpecialCard>(() => ({ type: 'pirates', ...base })),
     ...[...Array(2)].map<SpecialCard>(() => ({ type: 'mermaids', ...base })),
     { type: 'tigres', ...base },
     ...[...Array(5)].map<SpecialCard>(() => ({
@@ -60,7 +60,7 @@ export const generateDeck = () => {
       escapeType: 'standard',
       ...base,
     })),
-    ...[...Array(29)].map<SpecialCard>(() => ({
+    ...[...Array(2)].map<SpecialCard>(() => ({
       type: 'escape',
       escapeType: 'gold',
       ...base,
