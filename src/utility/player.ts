@@ -68,17 +68,21 @@ export async function sendPublicMessage<T>(
 
 export const playerCommands = (message: Message) => {
   const command = message.content.split(' ');
+  const player = currentPlayers.find((p) => p.discordId === message.author.id);
+  const status = games[player?.guildId ?? 'あほのID']?.status;
   if (command[0] === '!join') {
     join(message);
     return;
   }
-  if (command[0] === '!expect') {
-    expectWinningCount(message);
-    return;
-  }
-  if (command[0] === '!put') {
-    put(message);
-    return;
+  if (!Number.isNaN(Number(command[0]))) {
+    if (status === 'expecting') {
+      expectWinningCount(message);
+      return;
+    }
+    if (status === 'putting') {
+      put(message);
+      return;
+    }
   }
   if (command[0] === '!bye') {
     bye(message);
@@ -133,6 +137,7 @@ export const sendCardsHand = async (client: Client, player: Player) => {
   const hasColor = player.cardsHand.some(
     (card) => 'color' in card && card.color === currentColor,
   );
+  const { countExpected, countActual } = player;
   const fields = player.cardsHand.map((card, index) => {
     const isInvalid =
       hasColor && 'color' in card && card.color !== currentColor;
@@ -142,6 +147,10 @@ export const sendCardsHand = async (client: Client, player: Player) => {
   });
   const embed: Embed = {
     title: '手札',
+    description:
+      countExpected === null
+        ? undefined
+        : `予想: ${countExpected}\n勝数: ${countActual}`,
     color: colors.yellow,
     fields,
   };
@@ -149,23 +158,8 @@ export const sendCardsHand = async (client: Client, player: Player) => {
   user.send({ embed });
 };
 
-const turnText = (player: Player, players: Player[]) => {
-  const turn = players.findIndex((p) => p.discordId === player.discordId) + 1;
-  if (turn === 1) {
-    return '最初';
-  }
-  if (turn === players.length) {
-    return '最後';
-  }
-  return `${turn}番目`;
-};
-
 export const urgeToExpect = (client: Client, player: Player) => {
-  const gamePlayers = games[player.guildId]!.players;
-  const turn = turnText(player, gamePlayers);
-  const description =
-    '```!expect [予想数]```\nで勝利数を予想しようね\n\n' +
-    `ちなみに順番は${turn}らしいよ`;
+  const description = 'チャットで数字を送って勝利数を予想しようね';
   const embed: Embed = {
     title: '勝利数を予想しよう！',
     color: colors.info,
@@ -189,7 +183,7 @@ export const expectWinningCount = async (message: Message) => {
     message.channel.send(`やり直しは効かぬのだ...！`);
     return;
   }
-  const count = Number(message.content.split(' ')[1]);
+  const count = Number(message.content);
   if (Number.isNaN(count)) {
     message.channel.send(`数字を教えてほしいよー`);
     return;
@@ -217,13 +211,8 @@ export const expectWinningCount = async (message: Message) => {
 export const urgeToPutDownCard = async (client: Client, player: Player) => {
   const description =
     '順番回ってきちゃったんでカード出そうね\n\n' +
-    'カードの出し方はこんな感じ\n' +
-    '```!put [カード番号]```\n' +
-    '例えば`!put 2`と入力すると2枚目のカードを出すことになるよ\n' +
-    '`!put`のように数字を省略した場合は手札の中の1枚目のカードを出すよ\n\n' +
-    '手札を再度確認したい場合は`!check`と打てばいいんじゃないかな？\n\n' +
-    'ちなみにこの入力はここのDMで打ち込んでもいいし、ゲーム開始したチャンネルで打ち込んでもいいよ\n' +
-    'まあチャンネルだと手札確認しにくいし、ここで打ち込んじゃった方がいいんじゃない？';
+    '何枚目のカード出すか教えてほし〜\n' +
+    '例えば`2`と入力すると2枚目のカードを出すことになるよ';
   const embed: Embed = {
     title: 'カードを出すんだぞい',
     description,
@@ -279,11 +268,7 @@ const put = async (message: Message) => {
     return;
   }
   const commands = message.content.split(' ');
-  if (commands.length === 1) {
-    await putOut(message, 0);
-    return;
-  }
-  const inputNumber = Number(commands[1]);
+  const inputNumber = Number(commands[0]);
   if (Number.isNaN(inputNumber)) {
     await message.channel.send('数字を教えてほしいよー');
     return;
@@ -301,15 +286,15 @@ const put = async (message: Message) => {
   }
   const card = cardsHand[inputNumber - 1];
   if ('type' in card && card.type === 'tigres') {
-    if (commands.length < 3 || !['pirates', 'escape'].includes(commands[2])) {
+    if (commands.length < 2 || !['pirates', 'escape'].includes(commands[1])) {
       await message.channel.send(
         'ティグレスを使うときは`pirates`か`escape`を入力してね\n' +
-          `\`!put ${inputNumber} pirates\`もしくは\`!put ${inputNumber} escape\``,
+          `\`${inputNumber} pirates\`もしくは\`${inputNumber} escape\``,
       );
       return;
     }
   }
-  const tigresType = (commands[2] ?? null) as TigresType;
+  const tigresType = (commands[1] ?? null) as TigresType;
   if ('type' in card) {
     card.tigresType = tigresType;
   }
