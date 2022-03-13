@@ -256,7 +256,7 @@ const resultOnOneGame = async (message: Message, guildId: string) => {
   });
   game.deadCards = [...game.deadCards, ...deadCards];
   game.gameCount += 1;
-  if (game.gameCount <= 2) {
+  if (game.gameCount <= 10) {
     const nextMessage = `第${game.gameCount}戦目やってこー`;
     await sendAllMessage(message.client, players[0], nextMessage);
     game.status = 'expecting';
