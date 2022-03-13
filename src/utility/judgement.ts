@@ -13,13 +13,17 @@ export const updateCardWinning = (player: Player, card: Card) => {
   if ('type' in judgeCard && judgeCard.type === 'tigres') {
     judgeCard.type = judgeCard.tigresType!;
   }
+  const winnerCard = { ...currentWinner.card };
+  if ('type' in winnerCard && winnerCard.type === 'tigres') {
+    winnerCard.type = winnerCard.tigresType!;
+  }
   if ('color' in judgeCard) {
-    if (judgeByColor(judgeCard, currentWinner.card)) {
+    if (judgeByColor(judgeCard, winnerCard)) {
       game.currentWinner = { player, card };
     }
     return;
   }
-  if (judgeBySpecial(judgeCard, currentWinner.card)) {
+  if (judgeBySpecial(judgeCard, winnerCard)) {
     game.currentWinner = { player, card };
   }
 };
@@ -37,6 +41,7 @@ const judgeByColor = (card: ColorCard, winnerCard: Card) => {
   return winnerCard.type === 'escape';
 };
 
+// eslint-disable-next-line complexity
 const judgeBySpecial = (card: SpecialCard, winnerCard: Card) => {
   if ('color' in winnerCard) {
     return card.type !== 'escape';
