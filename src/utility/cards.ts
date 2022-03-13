@@ -14,7 +14,6 @@ export type SpecialCard = {
   escapeType?: 'standard' | 'gold' | 'kraken';
   bonus: number;
   owner?: Player;
-  receiver?: Player;
   tigresType: TigresType;
 };
 
@@ -22,7 +21,7 @@ export type Card = ColorCard | SpecialCard;
 
 export type TigresType = 'pirates' | 'escape' | null;
 
-const generateBonus = (type: Color | Special, number: number) => {
+const generateBonus = (type: Color, number: number) => {
   if (number < 14) {
     return 0;
   }
@@ -53,7 +52,7 @@ export const generateDeck = () => {
   const base = { bonus: 0, tigresType: null };
   const specialCards: SpecialCard[] = [
     { type: 'skullking', ...base },
-    ...[...Array(5)].map<SpecialCard>(() => ({ type: 'pirates', ...base })),
+    ...[...Array(59)].map<SpecialCard>(() => ({ type: 'pirates', ...base })),
     ...[...Array(2)].map<SpecialCard>(() => ({ type: 'mermaids', ...base })),
     { type: 'tigres', ...base },
     ...[...Array(5)].map<SpecialCard>(() => ({
@@ -61,7 +60,7 @@ export const generateDeck = () => {
       escapeType: 'standard',
       ...base,
     })),
-    ...[...Array(2)].map<SpecialCard>(() => ({
+    ...[...Array(29)].map<SpecialCard>(() => ({
       type: 'escape',
       escapeType: 'gold',
       ...base,

@@ -18,9 +18,11 @@ export type Player = {
   countExpected: number | null;
   countActual: number;
   point: number;
+  collectedCards: Card[];
+  goldBonus?: number;
 };
 
-const currentPlayers: Player[] = [];
+export const currentPlayers: Player[] = [];
 
 export async function sendAllMessage<T>(
   client: Client,
@@ -112,6 +114,7 @@ const join = (message: Message) => {
     countExpected: null,
     countActual: 0,
     point: 0,
+    collectedCards: [],
   };
   games[guildId]!.players.push(player);
   currentPlayers.push(player);
@@ -259,12 +262,20 @@ const put = async (message: Message) => {
   if (player === undefined) {
     return;
   }
-  const { players, playerTurnIndex } = games[player.guildId]!;
+  const { players, playerTurnIndex, status } = games[player.guildId]!;
+  if (status !== 'putting') {
+    await message.channel.send('その時はまだ早し...');
+    return;
+  }
   if (player.discordId !== players[playerTurnIndex].discordId) {
     await message.channel.send('まだターン回ってきてないよー');
     return;
   }
   const commands = message.content.split(' ');
+  if (commands.length === 1) {
+    await putOut(message, 0);
+    return;
+  }
   const inputNumber = Number(commands[1]);
   if (Number.isNaN(inputNumber)) {
     await message.channel.send('数字を教えてほしいよー');
@@ -294,10 +305,6 @@ const put = async (message: Message) => {
   const tigresType = (commands[2] ?? null) as TigresType;
   if ('type' in card) {
     card.tigresType = tigresType;
-  }
-  if (commands.length === 1) {
-    await putOut(message, 0);
-    return;
   }
   await putOut(message, inputNumber - 1);
 };

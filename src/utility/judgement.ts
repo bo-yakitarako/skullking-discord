@@ -75,3 +75,53 @@ export const updateBonus = (guildId: string) => {
     card.bonus = piratesCount * 30;
   });
 };
+
+const isSuccess = ({ countExpected, countActual }: Player) => {
+  return countActual === countExpected;
+};
+
+export const updateGoldBonus = (guildId: string) => {
+  const { players } = games[guildId]!;
+  players.forEach((player) => {
+    if (!isSuccess(player)) {
+      return;
+    }
+    const { collectedCards } = player;
+    collectedCards.forEach((card) => {
+      if ('color' in card) {
+        return;
+      }
+      const { escapeType, owner } = card;
+      if (escapeType !== 'gold') {
+        return;
+      }
+      if (owner !== undefined && isSuccess(owner)) {
+        card.bonus = 20;
+        if (owner.goldBonus === undefined) {
+          owner.goldBonus = 20;
+        } else {
+          owner.goldBonus += 20;
+        }
+      }
+    });
+  });
+};
+
+export const generateScores = (guildId: string) => {
+  const { players, gameCount } = games[guildId]!;
+  return players.map((player) => {
+    const { countExpected, countActual, collectedCards } = player;
+    const countDiff = Math.abs(countExpected! - countActual);
+    if (countDiff > 0) {
+      return -(player.countExpected === 0 ? gameCount : countDiff) * 10;
+    }
+    const basic = countActual === 0 ? gameCount * 10 : countActual * 20;
+    const bonus =
+      collectedCards.reduce((prev, card) => prev + card.bonus, 0) +
+      (player.goldBonus || 0);
+    if ('goldBonus' in player) {
+      delete player.goldBonus;
+    }
+    return basic + bonus;
+  });
+};

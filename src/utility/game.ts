@@ -2,8 +2,14 @@ import { Client, Message, TextChannel, User } from 'discord.js';
 import { Embed } from '..';
 import { Card, Color, convertCardValue, generateDeck, shuffle } from './cards';
 import { colors, convertToColor } from './embedColor';
-import { updateBonus, updateCardWinning } from './judgement';
 import {
+  generateScores,
+  updateBonus,
+  updateCardWinning,
+  updateGoldBonus,
+} from './judgement';
+import {
+  currentPlayers,
   Player,
   sendAllMessage,
   sendCardsHand,
@@ -52,7 +58,7 @@ const launch = (message: Message) => {
   games[guildId] = {
     status: 'ready',
     players: [],
-    gameCount: 10,
+    gameCount: 2,
     playerTurnIndex: 0,
     cards,
     currentPutOut: [],
@@ -63,8 +69,17 @@ const launch = (message: Message) => {
   message.channel.send('すかき〜ん(`!join`で参加しよう)');
 };
 
-const displayTurns = (message: Message) => {
-  const { players } = games[message.guild!.id]!;
+const displayTurns = async (message: Message) => {
+  let guildId = message.guild?.id;
+  if (guildId === undefined) {
+    guildId = currentPlayers.find(
+      (p) => p.discordId === message.author.id,
+    )?.guildId;
+    if (guildId === undefined) {
+      return;
+    }
+  }
+  const { players } = games[guildId]!;
   const description = players
     .map(({ name }, index) => `${index + 1}. ${name}`)
     .join('\n');
@@ -73,7 +88,7 @@ const displayTurns = (message: Message) => {
     description,
     color: colors.info,
   };
-  message.channel.send({ embed });
+  await sendAllMessage(message.client, players[0], { embed });
 };
 
 const dealCards = async (message: Message) => {
@@ -104,7 +119,7 @@ const start = async (message: Message) => {
   }
   games[guildId]!.status = 'expecting';
   games[guildId]!.players = shuffle(games[guildId]!.players);
-  displayTurns(message);
+  await displayTurns(message);
   await dealCards(message);
   message.channel.send('DMで予想した勝利数を教えてちょー');
   games[guildId]!.players.forEach((player) => {
@@ -168,6 +183,72 @@ export const putOutCard = async (
   await nextTurn(message, player);
 };
 
+const alertWinner = async (message: Message, p: Player, hasKraken: boolean) => {
+  const { currentWinner } = games[p.guildId]!;
+  const { player, card } = currentWinner!;
+  const title = hasKraken ? '残念ながら...' : `${player.name}くんの勝ち！`;
+  const description = hasKraken
+    ? 'クラーケンが出たのでお流れです...'
+    : `${convertCardValue(card)}を出したよ！`;
+  const color = colors.gold;
+  const embed: Embed = { title, description, color };
+  await sendAllMessage(message.client, player, { embed });
+};
+
+const reorder = (guildId: string) => {
+  const game = games[guildId]!;
+  const { currentWinner, players } = game;
+  const winner = currentWinner?.player;
+  if (winner === undefined) {
+    return;
+  }
+  const index = players.indexOf(winner);
+  game.players = [...players.slice(index), ...players.slice(0, index)];
+};
+
+const resultOnOneGame = async (message: Message, guildId: string) => {
+  const game = games[guildId]!;
+  const { players } = game;
+  const scores = generateScores(guildId);
+  const fields = players.map((player, index) => {
+    player.point += scores[index];
+    const { name, point } = player;
+    const sign = scores[index] > 0 ? '+' : '';
+    const pointSign = point > 0 ? '+' : '';
+    return {
+      name: `${name}くんの結果`,
+      value: `**${sign}${scores[index]}点**\n合計: ${pointSign}${point}点`,
+    };
+  });
+  const embed: Embed = {
+    title: '今回の得点は...！？',
+    fields,
+    color: colors.info,
+  };
+  await sendAllMessage(message.client, players[0], { embed });
+  const deadCards = players.reduce((acc, { collectedCards }) => {
+    const initCards = collectedCards.map((card) => {
+      if ('color' in card) {
+        return { ...card, owner: undefined };
+      }
+      return {
+        ...card,
+        owner: undefined,
+        bonus: 0,
+        tigresType: null,
+      };
+    });
+    return [...acc, ...initCards];
+  }, [] as Card[]);
+  players.forEach((player) => {
+    player.countExpected = null;
+    player.countActual = 0;
+    player.collectedCards = [];
+  });
+  game.deadCards = [...game.deadCards, ...deadCards];
+  game.gameCount += 1;
+};
+
 const nextTurn = async (message: Message, player: Player) => {
   const game = games[player.guildId]!;
   game.playerTurnIndex += 1;
@@ -179,5 +260,30 @@ const nextTurn = async (message: Message, player: Player) => {
     await urgeToPutDownCard(message.client, nextPlayer);
     return;
   }
+  const { currentPutOut: putOuts } = game;
+  const hasKraken = putOuts.some(
+    (card) => 'type' in card && card.escapeType === 'kraken',
+  );
+  await alertWinner(message, player, hasKraken);
+  if (hasKraken) {
+    game.deadCards.push(...putOuts);
+  } else {
+    game.currentWinner!.player.collectedCards.push(...putOuts);
+    game.currentWinner!.player.countActual += 1;
+  }
   updateBonus(player.guildId);
+  reorder(player.guildId);
+  game.playerTurnIndex = 0;
+  game.currentWinner = null;
+  game.currentColor = null;
+  game.currentPutOut = [];
+  if (player.cardsHand.length === 0) {
+    updateGoldBonus(player.guildId);
+    await resultOnOneGame(message, player.guildId);
+    return;
+  }
+  await displayTurns(message);
+  const resumeMessage = `${game.players[0].name}くんから再開や〜`;
+  await sendAllMessage(message.client, player, resumeMessage);
+  await urgeToPutDownCard(message.client, game.players[0]);
 };
