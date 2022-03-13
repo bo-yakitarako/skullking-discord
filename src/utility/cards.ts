@@ -1,17 +1,26 @@
+import { Player } from './player';
+
 export type Color = 'green' | 'yellow' | 'purple' | 'black';
-type ColorCard = {
+export type ColorCard = {
   color: Color;
   number: number;
   bonus: number;
+  owner?: Player;
 };
 
 type Special = 'skullking' | 'pirates' | 'mermaids' | 'escape' | 'tigres';
-type SpecialCard = {
+export type SpecialCard = {
   type: Special;
   escapeType?: 'standard' | 'gold' | 'kraken';
+  bonus: number;
+  owner?: Player;
+  receiver?: Player;
+  tigresType: TigresType;
 };
 
 export type Card = ColorCard | SpecialCard;
+
+export type TigresType = 'pirates' | 'escape' | null;
 
 const generateBonus = (type: Color | Special, number: number) => {
   if (number < 14) {
@@ -41,20 +50,23 @@ export const generateDeck = () => {
     return [...prev, ...numberCards];
   }, [] as ColorCard[]);
 
+  const base = { bonus: 0, tigresType: null };
   const specialCards: SpecialCard[] = [
-    { type: 'skullking' },
-    ...[...Array(5)].map<SpecialCard>(() => ({ type: 'pirates' })),
-    ...[...Array(2)].map<SpecialCard>(() => ({ type: 'mermaids' })),
-    { type: 'tigres' },
+    { type: 'skullking', ...base },
+    ...[...Array(5)].map<SpecialCard>(() => ({ type: 'pirates', ...base })),
+    ...[...Array(2)].map<SpecialCard>(() => ({ type: 'mermaids', ...base })),
+    { type: 'tigres', ...base },
     ...[...Array(5)].map<SpecialCard>(() => ({
       type: 'escape',
       escapeType: 'standard',
+      ...base,
     })),
     ...[...Array(2)].map<SpecialCard>(() => ({
       type: 'escape',
       escapeType: 'gold',
+      ...base,
     })),
-    { type: 'escape', escapeType: 'kraken' },
+    { type: 'escape', escapeType: 'kraken', ...base },
   ];
 
   return shuffle([...colorCards, ...specialCards] as Card[]);

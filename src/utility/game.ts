@@ -1,13 +1,16 @@
 import { Client, Message, TextChannel, User } from 'discord.js';
 import { Embed } from '..';
 import { Card, Color, convertCardValue, generateDeck, shuffle } from './cards';
-import { colors } from './embedColor';
+import { colors, convertToColor } from './embedColor';
+import { updateBonus, updateCardWinning } from './judgement';
 import {
   Player,
+  sendAllMessage,
   sendCardsHand,
   sendPrivateMessage,
   sendPublicMessage,
   urgeToExpect,
+  urgeToPutDownCard,
 } from './player';
 
 type Game = {
@@ -18,6 +21,10 @@ type Game = {
   cards: Card[];
   currentPutOut: Card[];
   currentColor: Color | null;
+  currentWinner: {
+    player: Player;
+    card: Card;
+  } | null;
   deadCards: Card[];
 };
 
@@ -45,11 +52,12 @@ const launch = (message: Message) => {
   games[guildId] = {
     status: 'ready',
     players: [],
-    gameCount: 1,
+    gameCount: 10,
     playerTurnIndex: 0,
     cards,
     currentPutOut: [],
     currentColor: null,
+    currentWinner: null,
     deadCards: [],
   };
   message.channel.send('すかき〜ん(`!join`で参加しよう)');
@@ -80,7 +88,7 @@ const dealCards = async (message: Message) => {
   for (const player of players) {
     // spliceは該当箇所を返して元の配列から削除するものなのでこれで配る処理は完了
     player.cardsHand = cards.splice(0, gameCount);
-    await sendCardsHand(message, player);
+    await sendCardsHand(message.client, player);
   }
 };
 
@@ -120,8 +128,25 @@ export const checkEveryPlayerExpectedCount = async (
   await channel.send({ embed });
 };
 
+export const checkEveryPlayerHand = async (client: Client, player: Player) => {
+  const { currentPutOut } = games[player.guildId]!;
+  if (currentPutOut.length === 0) {
+    return;
+  }
+  const fields = currentPutOut.map((card) => ({
+    name: `${card.owner?.name}くんの出したやつ`,
+    value: convertCardValue(card),
+  }));
+  const embed: Embed = {
+    title: '今までに出たカード',
+    fields,
+    color: colors.info,
+  };
+  await sendPrivateMessage(client, player, { embed });
+};
+
 export const putOutCard = async (
-  client: Client,
+  message: Message,
   player: Player,
   putOutIndex: number,
 ) => {
@@ -132,13 +157,27 @@ export const putOutCard = async (
   if ('color' in card && game.currentColor === null) {
     game.currentColor = card.color;
   }
+  card.owner = player;
   const embed: Embed = {
     title: `${name}くんの出したカード`,
     description: convertCardValue(card),
-    color: colors.info,
+    color: convertToColor(card),
   };
-  for (const p of game.players) {
-    await sendPrivateMessage(client, p, { embed });
+  await sendAllMessage(message.client, player, { embed });
+  updateCardWinning(player, card);
+  await nextTurn(message, player);
+};
+
+const nextTurn = async (message: Message, player: Player) => {
+  const game = games[player.guildId]!;
+  game.playerTurnIndex += 1;
+  const { players, playerTurnIndex } = game;
+  if (playerTurnIndex < players.length) {
+    const nextPlayer = players[playerTurnIndex];
+    const publicMessage = `${nextPlayer.name}くんの番やで`;
+    await sendPublicMessage(message.client, nextPlayer, publicMessage);
+    await urgeToPutDownCard(message.client, nextPlayer);
+    return;
   }
-  await sendPublicMessage(client, player, { embed });
+  updateBonus(player.guildId);
 };

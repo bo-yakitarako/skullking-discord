@@ -1,8 +1,13 @@
 import { Client, Message, TextChannel } from 'discord.js';
 import { Embed } from '..';
-import { Card, convertCardValue } from './cards';
+import { Card, convertCardValue, TigresType } from './cards';
 import { colors } from './embedColor';
-import { checkEveryPlayerExpectedCount, games, putOutCard } from './game';
+import {
+  checkEveryPlayerExpectedCount,
+  checkEveryPlayerHand,
+  games,
+  putOutCard,
+} from './game';
 
 export type Player = {
   discordId: string;
@@ -17,6 +22,18 @@ export type Player = {
 
 const currentPlayers: Player[] = [];
 
+export async function sendAllMessage<T>(
+  client: Client,
+  player: Player,
+  message: T,
+) {
+  const { players } = games[player.guildId]!;
+  for (const p of players) {
+    await sendPrivateMessage(client, p, message);
+  }
+  await sendPublicMessage(client, player, message);
+}
+
 export async function sendPrivateMessage<T>(
   client: Client,
   player: Player,
@@ -26,7 +43,11 @@ export async function sendPrivateMessage<T>(
   if (user === undefined) {
     return;
   }
-  await user.send(message);
+  try {
+    await user.send(message);
+  } catch {
+    await user.send('あほしねや');
+  }
 }
 
 export async function sendPublicMessage<T>(
@@ -59,7 +80,7 @@ export const playerCommands = (message: Message) => {
       (p) => p.discordId === message.author.id,
     );
     if (player !== undefined) {
-      sendCardsHand(message, player);
+      sendCardsHand(message.client, player);
     }
   }
 };
@@ -97,7 +118,7 @@ const join = (message: Message) => {
   message.channel.send(`${player.name}が入ったぞい！`);
 };
 
-export const sendCardsHand = async (message: Message, player: Player) => {
+export const sendCardsHand = async (client: Client, player: Player) => {
   const { currentColor } = games[player.guildId]!;
   const hasColor = player.cardsHand.some(
     (card) => 'color' in card && card.color === currentColor,
@@ -114,7 +135,7 @@ export const sendCardsHand = async (message: Message, player: Player) => {
     color: colors.yellow,
     fields,
   };
-  const user = await message.client.users.fetch(player.discordId, false);
+  const user = await client.users.fetch(player.discordId, false);
   user.send({ embed });
 };
 
@@ -173,13 +194,14 @@ export const expectWinningCount = async (message: Message) => {
   const channel = guild.channels.cache.get(player.channelId)! as TextChannel;
   await checkEveryPlayerExpectedCount(channel, gamePlayers);
   const first = gamePlayers[0];
-  channel.send(`${first.name}くんから始めんぞい！`);
   games[player.guildId]!.status = 'putting';
   for (const player of gamePlayers) {
     const user = message.client.users.cache.get(player.discordId)!;
     await checkEveryPlayerExpectedCount(user, gamePlayers);
   }
-  urgeToPutDownCard(message.client, first);
+  const publicMessage = `${first.name}くんから始めんぞい！`;
+  await sendAllMessage(message.client, player, publicMessage);
+  await urgeToPutDownCard(message.client, first);
 };
 
 export const urgeToPutDownCard = async (client: Client, player: Player) => {
@@ -198,6 +220,8 @@ export const urgeToPutDownCard = async (client: Client, player: Player) => {
     color: colors.info,
   };
   await sendPrivateMessage(client, player, { embed });
+  await checkEveryPlayerHand(client, player);
+  await sendCardsHand(client, player);
 };
 
 const colorText = {
@@ -211,7 +235,7 @@ const putOut = async (message: Message, putOutIndex: number) => {
   const player = currentPlayers.find((p) => p.discordId === message.author.id)!;
   const card = player.cardsHand[putOutIndex];
   if ('type' in card) {
-    await putOutCard(message.client, player, putOutIndex);
+    await putOutCard(message, player, putOutIndex);
     return;
   }
   const { currentColor } = games[player.guildId]!;
@@ -226,9 +250,10 @@ const putOut = async (message: Message, putOutIndex: number) => {
     );
     return;
   }
-  await putOutCard(message.client, player, putOutIndex);
+  await putOutCard(message, player, putOutIndex);
 };
 
+// eslint-disable-next-line complexity
 const put = async (message: Message) => {
   const player = currentPlayers.find((p) => p.discordId === message.author.id);
   if (player === undefined) {
@@ -240,10 +265,6 @@ const put = async (message: Message) => {
     return;
   }
   const commands = message.content.split(' ');
-  if (commands.length === 1) {
-    await putOut(message, 0);
-    return;
-  }
   const inputNumber = Number(commands[1]);
   if (Number.isNaN(inputNumber)) {
     await message.channel.send('数字を教えてほしいよー');
@@ -258,6 +279,24 @@ const put = async (message: Message) => {
     await message.channel.send(
       `1から${cardsHand.length}までの数字を教えてほしいよー`,
     );
+    return;
+  }
+  const card = cardsHand[inputNumber - 1];
+  if ('type' in card && card.type === 'tigres') {
+    if (commands.length < 3 || !['pirates', 'escape'].includes(commands[2])) {
+      await message.channel.send(
+        'ティグレスを使うときは`pirates`か`escape`を入力してね\n' +
+          `\`!put ${inputNumber} pirates\`もしくは\`!put ${inputNumber} escape\``,
+      );
+      return;
+    }
+  }
+  const tigresType = (commands[2] ?? null) as TigresType;
+  if ('type' in card) {
+    card.tigresType = tigresType;
+  }
+  if (commands.length === 1) {
+    await putOut(message, 0);
     return;
   }
   await putOut(message, inputNumber - 1);
