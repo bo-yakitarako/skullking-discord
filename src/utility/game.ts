@@ -212,12 +212,11 @@ const resultOnOneGame = async (message: Message, guildId: string) => {
   const scores = generateScores(guildId);
   const fields = players.map((player, index) => {
     player.point += scores[index];
-    const { name, point } = player;
+    const { name } = player;
     const sign = scores[index] > 0 ? '+' : '';
-    const pointSign = point > 0 ? '+' : '';
     return {
       name: `${name}くんの結果`,
-      value: `**${sign}${scores[index]}点**\n合計: ${pointSign}${point}点`,
+      value: `**${sign}${scores[index]}点**`,
     };
   });
   const embed: Embed = {
