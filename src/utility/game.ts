@@ -107,7 +107,7 @@ const dealCards = async (message: Message) => {
   let { cards } = game;
   if (cards.length < players.length * gameCount) {
     cards = [...cards, ...shuffle(deadCards)];
-    game.cards = [...cards];
+    game.cards = cards;
     game.deadCards = [];
   }
   for (const player of players) {
