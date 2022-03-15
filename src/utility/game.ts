@@ -119,6 +119,8 @@ const dealCards = async (message: Message) => {
   const { players, gameCount, deadCards } = game;
   let { cards } = game;
   if (cards.length < players.length * gameCount) {
+    const alert = '捨て札からカード補充したぜよ';
+    await sendAllMessage(message.client, players[0], alert);
     cards = [...cards, ...shuffle(deadCards)];
     game.cards = cards;
     game.deadCards = [];
