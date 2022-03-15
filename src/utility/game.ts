@@ -76,10 +76,9 @@ const launch = (message: Message) => {
 
 const displayTurns = async (message: Message) => {
   let guildId = message.guild?.id;
+  const discordId = message.author.id;
   if (guildId === undefined) {
-    guildId = currentPlayers.find(
-      (p) => p.discordId === message.author.id,
-    )?.guildId;
+    guildId = currentPlayers.find((p) => p.discordId === discordId)?.guildId;
     if (guildId === undefined) {
       return;
     }
@@ -88,12 +87,26 @@ const displayTurns = async (message: Message) => {
   const description = players
     .map(({ name }, index) => `${index + 1}. ${name}`)
     .join('\n');
-  const embed: Embed = {
+  const embedBase: Embed = {
     title: '順番',
     description,
     color: colors.info,
   };
-  await sendAllMessage(message.client, players[0], { embed });
+  if (players.every((p) => p.countExpected !== null)) {
+    embedBase.fields = players.map(({ name, countExpected, countActual }) => ({
+      name: `${name}くんの現状`,
+      value: `予想: ${countExpected}\n勝数: ${countActual}`,
+    }));
+  }
+  for (const p of players) {
+    const embed = { ...embedBase };
+    if (embed.fields !== undefined) {
+      const index = players.findIndex((ps) => ps.discordId === p.discordId);
+      embed.fields = embed.fields.filter((_, i) => i !== index);
+    }
+    await sendPrivateMessage(message.client, p, { embed });
+  }
+  await sendPublicMessage(message.client, players[0], { embed: embedBase });
 };
 
 const dealCards = async (message: Message) => {
