@@ -7,6 +7,7 @@ import {
   checkEveryPlayerHand,
   games,
   putOutCard,
+  cpPut,
 } from './game';
 
 export type Player = {
@@ -20,6 +21,7 @@ export type Player = {
   point: number;
   collectedCards: Card[];
   goldBonus?: number;
+  isCp: boolean;
 };
 
 export const currentPlayers: Player[] = [];
@@ -44,6 +46,9 @@ export async function sendPrivateMessage<T>(
   player: Player,
   message: T,
 ) {
+  if (player.isCp) {
+    return;
+  }
   const user = await client.users.fetch(player.discordId, false);
   if (user === undefined) {
     return;
@@ -126,6 +131,7 @@ const join = (message: Message) => {
     countActual: 0,
     point: 0,
     collectedCards: [],
+    isCp: false,
   };
   games[guildId]!.players.push(player);
   currentPlayers.push(player);
@@ -133,6 +139,9 @@ const join = (message: Message) => {
 };
 
 export const sendCardsHand = async (client: Client, player: Player) => {
+  if (player.isCp) {
+    return;
+  }
   const { currentColor } = games[player.guildId]!;
   const hasColor = player.cardsHand.some(
     (card) => 'color' in card && card.color === currentColor,
@@ -159,6 +168,11 @@ export const sendCardsHand = async (client: Client, player: Player) => {
 };
 
 export const urgeToExpect = (client: Client, player: Player) => {
+  if (player.isCp) {
+    const { gameCount } = games[player.guildId]!;
+    player.countExpected = Math.floor(Math.random() * (gameCount + 1));
+    return;
+  }
   const description = 'チャットで数字を送って勝利数を予想しようね';
   const embed: Embed = {
     title: '勝利数を予想しよう！',
@@ -203,16 +217,20 @@ export const expectWinningCount = async (message: Message) => {
   await checkEveryPlayerExpectedCount(channel, players);
   const first = players[0];
   games[player.guildId]!.status = 'putting';
-  for (const player of players) {
+  for (const player of players.filter((p) => !p.isCp)) {
     const user = message.client.users.cache.get(player.discordId)!;
     await checkEveryPlayerExpectedCount(user, players);
   }
   const publicMessage = `${first.name}くんから始めんぞい！`;
   await sendAllMessage(message.client, player, publicMessage);
-  await urgeToPutDownCard(message.client, first);
+  await urgeToPutDownCard(message, first);
 };
 
-export const urgeToPutDownCard = async (client: Client, player: Player) => {
+export const urgeToPutDownCard = async (message: Message, player: Player) => {
+  if (player.isCp) {
+    await cpPut(message, player);
+    return;
+  }
   const description =
     '順番回ってきちゃったんでカード出そうね\n\n' +
     '何枚目のカード出すか教えてほし〜\n' +
@@ -222,9 +240,9 @@ export const urgeToPutDownCard = async (client: Client, player: Player) => {
     description,
     color: colors.info,
   };
-  await sendPrivateMessage(client, player, { embed });
-  await checkEveryPlayerHand(client, player);
-  await sendCardsHand(client, player);
+  await sendPrivateMessage(message.client, player, { embed });
+  await checkEveryPlayerHand(message.client, player);
+  await sendCardsHand(message.client, player);
 };
 
 const colorText = {

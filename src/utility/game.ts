@@ -138,9 +138,24 @@ const start = async (message: Message) => {
     message.channel.send('`!launch`で起動しようね');
     return;
   }
+  const cp: Player = {
+    discordId: '',
+    name: 'コンピューター',
+    guildId,
+    channelId: message.channel.id,
+    cardsHand: [],
+    countExpected: null,
+    countActual: 0,
+    point: 0,
+    collectedCards: [],
+    isCp: true,
+  };
   if (games[guildId]!.players.length < 2) {
     message.channel.send('2人以上参加せんとできんぜよ');
     return;
+  }
+  if (games[guildId]!.players.length < 3) {
+    games[guildId]!.players.push(cp);
   }
   games[guildId]!.status = 'expecting';
   games[guildId]!.players = shuffle(games[guildId]!.players);
@@ -285,15 +300,28 @@ const resultOnOneGame = async (message: Message, guildId: string) => {
   await finish(message, players[0].guildId);
 };
 
+export const cpPut = async (message: Message, cp: Player) => {
+  const cardIndex = Math.floor(Math.random() * cp.cardsHand.length);
+  const card = cp.cardsHand[cardIndex];
+  if ('type' in card && card.tigresType !== undefined) {
+    card.tigresType = Math.random() < 0.5 ? 'pirates' : 'escape';
+  }
+  await putOutCard(message, cp, cardIndex);
+};
+
 const nextTurn = async (message: Message, player: Player) => {
   const game = games[player.guildId]!;
   game.playerTurnIndex += 1;
   const { players, playerTurnIndex } = game;
   if (playerTurnIndex < players.length) {
     const nextPlayer = players[playerTurnIndex];
+    if (nextPlayer.isCp) {
+      await cpPut(message, nextPlayer);
+      return;
+    }
     const publicMessage = `${nextPlayer.name}くんの番やで`;
     await sendPublicMessage(message.client, nextPlayer, publicMessage);
-    await urgeToPutDownCard(message.client, nextPlayer);
+    await urgeToPutDownCard(message, nextPlayer);
     return;
   }
   const { currentPutOut: putOuts } = game;
@@ -321,7 +349,7 @@ const nextTurn = async (message: Message, player: Player) => {
   await displayTurns(message);
   const resumeMessage = `${game.players[0].name}くんから再開や〜`;
   await sendAllMessage(message.client, player, resumeMessage);
-  await urgeToPutDownCard(message.client, game.players[0]);
+  await urgeToPutDownCard(message, game.players[0]);
 };
 
 const finish = async (message: Message, guildId: string) => {
