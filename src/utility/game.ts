@@ -303,7 +303,7 @@ const resultOnOneGame = async (message: Message, guildId: string) => {
 export const cpPut = async (message: Message, cp: Player) => {
   const cardIndex = Math.floor(Math.random() * cp.cardsHand.length);
   const card = cp.cardsHand[cardIndex];
-  if ('type' in card && card.tigresType !== undefined) {
+  if ('type' in card && card.type === 'tigres') {
     card.tigresType = Math.random() < 0.5 ? 'pirates' : 'escape';
   }
   await putOutCard(message, cp, cardIndex);
