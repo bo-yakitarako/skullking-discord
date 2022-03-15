@@ -172,36 +172,40 @@ export const expectWinningCount = async (message: Message) => {
   const discordId = message.author.id;
   const player = currentPlayers.find((p) => p.discordId === discordId);
   if (player === undefined) {
-    message.channel.send(`<@!${discordId}> だれ？`);
+    await message.channel.send(`<@!${discordId}> だれ？`);
     return;
   }
   if (message.guild !== null) {
-    message.channel.send(`<@!${discordId}> DMでこっそり教えてほしいよー`);
+    await message.channel.send(`<@!${discordId}> DMでこっそり教えてほしいよー`);
     return;
   }
   if (player.countExpected !== null) {
-    message.channel.send(`やり直しは効かぬのだ...！`);
+    await message.channel.send(`やり直しは効かぬのだ...！`);
     return;
   }
   const count = Number(message.content);
   if (Number.isNaN(count)) {
-    message.channel.send(`数字を教えてほしいよー`);
+    await message.channel.send(`数字を教えてほしいよー`);
+    return;
+  }
+  const { gameCount, players } = games[player.guildId]!;
+  if (count < 0 || gameCount < count) {
+    await message.channel.send(`0から${gameCount}までの数字にしてよー`);
     return;
   }
   player.countExpected = count;
   message.channel.send(`${count}回だねーおっけー`);
-  const gamePlayers = games[player.guildId]!.players;
-  if (!gamePlayers.every(({ countExpected }) => countExpected !== null)) {
+  if (!players.every(({ countExpected }) => countExpected !== null)) {
     return;
   }
   const guild = message.client.guilds.cache.get(player.guildId)!;
   const channel = guild.channels.cache.get(player.channelId)! as TextChannel;
-  await checkEveryPlayerExpectedCount(channel, gamePlayers);
-  const first = gamePlayers[0];
+  await checkEveryPlayerExpectedCount(channel, players);
+  const first = players[0];
   games[player.guildId]!.status = 'putting';
-  for (const player of gamePlayers) {
+  for (const player of players) {
     const user = message.client.users.cache.get(player.discordId)!;
-    await checkEveryPlayerExpectedCount(user, gamePlayers);
+    await checkEveryPlayerExpectedCount(user, players);
   }
   const publicMessage = `${first.name}くんから始めんぞい！`;
   await sendAllMessage(message.client, player, publicMessage);
@@ -252,6 +256,20 @@ const putOut = async (message: Message, putOutIndex: number) => {
   await putOutCard(message, player, putOutIndex);
 };
 
+const canPutOutByHandCount = (player: Player) => {
+  const { players, playerTurnIndex } = games[player.guildId]!;
+  const opponents = players.filter((p) => p.discordId !== player.discordId);
+  const handCount = player.cardsHand.length;
+  if (playerTurnIndex === 0) {
+    return opponents.every((p) => p.cardsHand.length === handCount);
+  }
+  if (playerTurnIndex === players.length - 1) {
+    return opponents.every((p) => p.cardsHand.length === handCount - 1);
+  }
+  const maxHandCount = Math.max(...opponents.map((p) => p.cardsHand.length));
+  return handCount === maxHandCount;
+};
+
 // eslint-disable-next-line complexity
 const put = async (message: Message) => {
   const player = currentPlayers.find((p) => p.discordId === message.author.id);
@@ -265,6 +283,10 @@ const put = async (message: Message) => {
   }
   if (player.discordId !== players[playerTurnIndex].discordId) {
     await message.channel.send('まだターン回ってきてないよー');
+    return;
+  }
+  if (!canPutOutByHandCount(player)) {
+    await message.channel.send('なんか2枚以上出そうとしてない？');
     return;
   }
   const commands = message.content.split(' ');
