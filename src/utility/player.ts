@@ -121,6 +121,10 @@ const join = (message: Message) => {
     message.channel.send('おめぇの席あるから！');
     return;
   }
+  if (games[guildId]!.status !== 'ready') {
+    message.channel.send('他の人たちやってるぽいからちょっとお待ちー');
+    return;
+  }
   const player = {
     discordId,
     name: getDisplayName(message),
