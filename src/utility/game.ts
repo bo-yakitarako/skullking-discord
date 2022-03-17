@@ -132,6 +132,18 @@ const dealCards = async (message: Message) => {
   }
 };
 
+const fetchPlayerCount = (message: Message) => {
+  const commands = message.content.split(' ');
+  if (commands.length === 1) {
+    return 2;
+  }
+  const count = parseInt(commands[1], 10);
+  if (Number.isNaN(count)) {
+    return 2;
+  }
+  return count;
+};
+
 const start = async (message: Message) => {
   const guildId = message.guild?.id ?? 'あほのID';
   if (!(guildId in games)) {
@@ -150,12 +162,14 @@ const start = async (message: Message) => {
     collectedCards: [],
     isCp: true,
   };
-  if (games[guildId]!.players.length < 2) {
-    message.channel.send('2人以上参加せんとできんぜよ');
+  if (games[guildId]!.players.length === 0) {
+    message.channel.send('誰もいないよー');
     return;
   }
-  if (games[guildId]!.players.length < 3) {
-    games[guildId]!.players.push(cp);
+  const playerCount = fetchPlayerCount(message);
+  for (let i = games[guildId]!.players.length; i < playerCount; i += 1) {
+    const cpPlayer = { ...cp, name: `コンピューター${playerCount - i}` };
+    games[guildId]!.players.push(cpPlayer);
   }
   games[guildId]!.status = 'expecting';
   games[guildId]!.players = shuffle(games[guildId]!.players);
