@@ -301,7 +301,20 @@ const resultOnOneGame = async (message: Message, guildId: string) => {
 };
 
 export const cpPut = async (message: Message, cp: Player) => {
-  const cardIndex = Math.floor(Math.random() * cp.cardsHand.length);
+  const indexes = [...Array(cp.cardsHand.length).keys()];
+  const { currentColor } = games[cp.guildId]!;
+  const hasColor = cp.cardsHand.some(
+    (card) => 'color' in card && card.color === currentColor,
+  );
+  const validIndexes = indexes.filter((index) => {
+    const card = cp.cardsHand[index];
+    if ('type' in card || !hasColor) {
+      return true;
+    }
+    return card.color === currentColor;
+  });
+  const cardIndex =
+    validIndexes[Math.floor(Math.random() * validIndexes.length)];
   const card = cp.cardsHand[cardIndex];
   if ('type' in card && card.type === 'tigres') {
     card.tigresType = Math.random() < 0.5 ? 'pirates' : 'escape';
