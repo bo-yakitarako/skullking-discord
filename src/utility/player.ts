@@ -125,6 +125,10 @@ const join = (message: Message) => {
     message.channel.send('他の人たちやってるぽいからちょっとお待ちー');
     return;
   }
+  if (games[guildId]!.players.length >= 6) {
+    message.channel.send('人数いっぱいいっぱい');
+    return;
+  }
   const player = {
     discordId,
     name: getDisplayName(message),

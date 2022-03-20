@@ -167,6 +167,10 @@ const start = async (message: Message) => {
     return;
   }
   const playerCount = fetchPlayerCount(message);
+  if (playerCount > 6) {
+    message.channel.send('6人までにしようね');
+    return;
+  }
   for (let i = games[guildId]!.players.length; i < playerCount; i += 1) {
     const cpPlayer = { ...cp, name: `コンピューター${playerCount - i}` };
     games[guildId]!.players.push(cpPlayer);
