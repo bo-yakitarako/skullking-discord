@@ -268,9 +268,10 @@ const resultOnOneGame = async (message: Message, guildId: string) => {
     player.point += scores[index];
     const { name } = player;
     const sign = scores[index] > 0 ? '+' : '';
+    const totalSign = player.point > 0 ? '+' : '';
     return {
       name: `${name}くんの結果`,
-      value: `**${sign}${scores[index]}点**`,
+      value: `**${sign}${scores[index]}点** (合計${totalSign}${player.point}点)`,
     };
   });
   const embed: Embed = {
