@@ -84,12 +84,14 @@ const displayTurns = async (message: Message) => {
     }
   }
   const { players } = games[guildId]!;
-  const description = players
+  const turns = players
     .map(({ name }, index) => `${index + 1}. ${name}`)
     .join('\n');
+  const historyMessage =
+    '`!history [何番目の人か]`でその人の戦績を表示するよ\n自分の見たければ`!history`だけでもよさぽよ〜';
   const embedBase: Embed = {
     title: '順番',
-    description,
+    description: `${turns}\n\n${historyMessage}`,
     color: colors.info,
   };
   if (players.every((p) => p.countExpected !== null)) {
@@ -159,6 +161,7 @@ const start = async (message: Message) => {
     countExpected: null,
     countActual: 0,
     point: 0,
+    history: [],
     collectedCards: [],
     isCp: true,
   };
@@ -181,6 +184,8 @@ const start = async (message: Message) => {
   await dealCards(message);
   message.channel.send('DMで予想した勝利数を教えてちょー');
   games[guildId]!.players.forEach((player) => {
+    player.point = 0;
+    player.history = [];
     urgeToExpect(message.client, player);
   });
 };
@@ -269,13 +274,15 @@ const resultOnOneGame = async (message: Message, guildId: string) => {
   const { players } = game;
   const scores = generateScores(guildId);
   const fields = players.map((player, index) => {
-    player.point += scores[index];
+    const score = scores[index];
+    player.point += score;
+    player.history.push(score);
     const { name } = player;
-    const sign = scores[index] > 0 ? '+' : '';
+    const sign = score > 0 ? '+' : '';
     const totalSign = player.point > 0 ? '+' : '';
     return {
       name: `${name}くんの結果`,
-      value: `**${sign}${scores[index]}点** (合計${totalSign}${player.point}点)`,
+      value: `**${sign}${score}点** (合計${totalSign}${player.point}点)`,
     };
   });
   const embed: Embed = {
@@ -402,9 +409,6 @@ const finish = async (message: Message, guildId: string) => {
     color: colors.pirates,
   };
   await sendAllMessage(message.client, players[0], { embed });
-  players.forEach((p) => {
-    p.point = 0;
-  });
   game.cards = generateDeck();
   game.deadCards = [];
   game.gameCount = 1;

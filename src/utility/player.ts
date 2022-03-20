@@ -19,6 +19,7 @@ export type Player = {
   countExpected: number | null;
   countActual: number;
   point: number;
+  history: number[];
   collectedCards: Card[];
   goldBonus?: number;
   isCp: boolean;
@@ -93,6 +94,10 @@ export const playerCommands = (message: Message) => {
     bye(message);
     return;
   }
+  if (command[0] === '!history') {
+    showHistory(message);
+    return;
+  }
   if (command[0] === '!check') {
     const player = currentPlayers.find(
       (p) => p.discordId === message.author.id,
@@ -138,6 +143,7 @@ const join = (message: Message) => {
     countExpected: null,
     countActual: 0,
     point: 0,
+    history: [],
     collectedCards: [],
     isCp: false,
   };
@@ -347,6 +353,43 @@ const put = async (message: Message) => {
     card.tigresType = tigresType;
   }
   await putOut(message, inputNumber - 1);
+};
+
+const getHistoryPlayer = async (message: Message) => {
+  const player = currentPlayers.find((p) => p.discordId === message.author.id);
+  if (player === undefined) {
+    return null;
+  }
+  const targetNumber = Number(message.content.split(' ')[1]);
+  if (Number.isNaN(targetNumber)) {
+    return player;
+  }
+  const { players } = games[player.guildId]!;
+  if (targetNumber < 1 || targetNumber > players.length) {
+    await message.channel.send(`1から${players.length}にしてね`);
+    return null;
+  }
+  return players[targetNumber - 1];
+};
+
+const showHistory = async (message: Message) => {
+  const player = await getHistoryPlayer(message);
+  if (player === null) {
+    return;
+  }
+  const { name, history } = player;
+  const fields = history.map((point, index) => ({
+    name: `${index + 1}戦目`,
+    value: `${point > 0 ? '+' : ''}${point}`,
+    inline: true,
+  }));
+  const embed: Embed = {
+    title: `${name}の戦績！`,
+    description: `合計**${player.point}点**`,
+    color: colors.info,
+    fields,
+  };
+  await message.channel.send({ embed });
 };
 
 const bye = async (message: Message) => {
