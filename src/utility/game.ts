@@ -59,13 +59,12 @@ const launch = (message: Message) => {
     return;
   }
   const guildId = message.guild.id;
-  const cards = generateDeck();
   games[guildId] = {
     status: 'ready',
     players: [],
     gameCount: 1,
     playerTurnIndex: 0,
-    cards,
+    cards: generateDeck(),
     currentPutOut: [],
     currentColor: null,
     currentWinner: null,
@@ -152,19 +151,6 @@ const start = async (message: Message) => {
     message.channel.send('`!launch`で起動しようね');
     return;
   }
-  const cp: Player = {
-    discordId: '',
-    name: 'コンピューター',
-    guildId,
-    channelId: message.channel.id,
-    cardsHand: [],
-    countExpected: null,
-    countActual: 0,
-    point: 0,
-    history: [],
-    collectedCards: [],
-    isCp: true,
-  };
   if (games[guildId]!.players.length === 0) {
     message.channel.send('誰もいないよー');
     return;
@@ -175,8 +161,20 @@ const start = async (message: Message) => {
     return;
   }
   for (let i = games[guildId]!.players.length; i < playerCount; i += 1) {
-    const cpPlayer = { ...cp, name: `コンピューター${playerCount - i}` };
-    games[guildId]!.players.push(cpPlayer);
+    const cp: Player = {
+      discordId: '',
+      name: `コンピューター${playerCount - i}`,
+      guildId,
+      channelId: message.channel.id,
+      cardsHand: [],
+      countExpected: null,
+      countActual: 0,
+      point: 0,
+      history: [],
+      collectedCards: [],
+      isCp: true,
+    };
+    games[guildId]!.players.push(cp);
   }
   games[guildId]!.status = 'expecting';
   games[guildId]!.players = shuffle(games[guildId]!.players);
