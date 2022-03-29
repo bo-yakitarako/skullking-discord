@@ -59,6 +59,15 @@ const launch = (message: Message) => {
     return;
   }
   const guildId = message.guild.id;
+  if (games[guildId] !== undefined) {
+    const { players } = games[guildId]!;
+    players.forEach((p) => {
+      const index = currentPlayers.findIndex(
+        (ps) => ps.discordId === p.discordId,
+      );
+      currentPlayers.splice(index, 1);
+    });
+  }
   games[guildId] = {
     status: 'ready',
     players: [],
