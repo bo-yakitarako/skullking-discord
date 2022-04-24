@@ -171,6 +171,7 @@ const start = async (message: Message) => {
     message.channel.send('6人までにしようね');
     return;
   }
+  games[guildId]!.players = games[guildId]!.players.filter((p) => !p.isCp);
   for (let i = games[guildId]!.players.length; i < playerCount; i += 1) {
     const cp: Player = {
       discordId: '',
