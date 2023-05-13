@@ -1,7 +1,11 @@
 import { Client, GatewayIntentBits, Events } from 'discord.js';
 import { config } from 'dotenv';
 import { gameButtons, gameCommands, gameSelectMenus } from './utility/game';
-import { playerButtons, playerCommands } from './utility/player';
+import {
+  playerButtons,
+  playerCommands,
+  playerSelectMenus,
+} from './utility/player';
 
 config();
 
@@ -30,6 +34,7 @@ client.on(Events.InteractionCreate, (interaction) => {
     gameButtons(interaction);
   }
   if (interaction.isStringSelectMenu()) {
+    playerSelectMenus(interaction);
     gameSelectMenus(interaction);
   }
 });

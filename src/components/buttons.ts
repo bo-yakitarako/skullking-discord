@@ -3,14 +3,22 @@ import {
   ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
+  TextChannel,
 } from 'discord.js';
-import { dealCards, displayTurns, games } from '../utility/game';
+import {
+  dealCards,
+  displayTurns,
+  games,
+  sendEveryPlayerExpectedCount,
+} from '../utility/game';
 import {
   Player,
   currentPlayers,
   getDisplayName,
   mention,
+  sendAllMessage,
   urgeToExpect,
+  urgeToPutDownCard,
 } from '../utility/player';
 import { shuffle } from '../utility/cards';
 import { cpuCountSelect } from './selectMenus';
@@ -21,6 +29,7 @@ export const BUTTON_ID = {
   START: 'start',
   CPU_SET: 'cpu-set',
   START_CANCEL: 'start-cancel',
+  EXPECT_SEND: 'expect-send',
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -61,6 +70,7 @@ export const joinButton = {
       guildId,
       channelId: interaction.channel!.id,
       cardsHand: [],
+      selectedCountExpected: null,
       countExpected: null,
       countActual: 0,
       point: 0,
@@ -138,6 +148,7 @@ export const cpuSetButton = {
         guildId,
         channelId: interaction.channel!.id,
         cardsHand: [],
+        selectedCountExpected: null,
         countExpected: null,
         countActual: 0,
         point: 0,
@@ -179,5 +190,49 @@ export const startCancelButton = {
       components: [row],
     });
     await interaction.message.delete();
+  },
+};
+
+export const expectSendButton = {
+  component: new ButtonBuilder()
+    .setCustomId(BUTTON_ID.EXPECT_SEND)
+    .setLabel('送信')
+    .setStyle(ButtonStyle.Primary),
+  execute: async (interaction: ButtonInteraction) => {
+    const discordId = interaction.user.id;
+    const player = currentPlayers.find((p) => p.discordId === discordId);
+    const at = mention(interaction.user);
+    if (player === undefined) {
+      await interaction.user.send(`${at} だれ？`);
+      await interaction.deferUpdate();
+      return;
+    }
+    const count = player.selectedCountExpected;
+    if (count === null) {
+      await interaction.user.send(`${at} 回数えらんでー`);
+      await interaction.deferUpdate();
+      return;
+    }
+    const { players } = games[player.guildId]!;
+    player.countExpected = count;
+    await interaction.user.send(`${count}回だねーおっけー`);
+    if (!players.every(({ countExpected }) => countExpected !== null)) {
+      await interaction.deferUpdate();
+      return;
+    }
+    const guild = interaction.client.guilds.cache.get(player.guildId)!;
+    const channel = guild.channels.cache.get(player.channelId)! as TextChannel;
+    await sendEveryPlayerExpectedCount(channel, players);
+    const first = players[0];
+    games[player.guildId]!.status = 'putting';
+    for (const player of players.filter((p) => !p.isCp)) {
+      const user = interaction.client.users.cache.get(player.discordId)!;
+      await sendEveryPlayerExpectedCount(user, players);
+    }
+    const publicMessage = `${first.name}くんから始めんぞい！`;
+    await sendAllMessage(interaction.client, player, publicMessage);
+    await urgeToPutDownCard(interaction, first);
+    await interaction.message.delete();
+    await interaction.deferUpdate();
   },
 };

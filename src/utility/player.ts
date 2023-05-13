@@ -9,17 +9,14 @@ import {
   Interaction,
   User,
   MessageComponentInteraction,
+  StringSelectMenuInteraction,
+  ActionRowBuilder,
 } from 'discord.js';
 import { Card, convertCardValue, TigresType } from './cards';
 import { colors } from './embedColor';
-import {
-  sendEveryPlayerExpectedCount,
-  sendEveryPlayerHand,
-  games,
-  putOutCard,
-  cpPut,
-} from './game';
-import { BUTTON_ID, joinButton } from '../components/buttons';
+import { sendEveryPlayerHand, games, putOutCard, cpPut } from './game';
+import { BUTTON_ID, expectSendButton, joinButton } from '../components/buttons';
+import { SELECT_MENU_ID, expectCountSelect } from '../components/selectMenus';
 
 export type Player = {
   discordId: string;
@@ -27,6 +24,7 @@ export type Player = {
   guildId: string;
   channelId: string;
   cardsHand: Card[];
+  selectedCountExpected: number | null;
   countExpected: number | null;
   countActual: number;
   point: number;
@@ -88,10 +86,6 @@ export const playerCommands = (message: Message) => {
   const player = currentPlayers.find((p) => p.discordId === message.author.id);
   const status = games[player?.guildId ?? 'あほのID']?.status;
   if (!Number.isNaN(Number(command[0]))) {
-    if (status === 'expecting') {
-      expectWinningCount(message);
-      return;
-    }
     if (status === 'putting') {
       put(message);
       return;
@@ -116,8 +110,20 @@ export const playerCommands = (message: Message) => {
 };
 
 export const playerButtons = (interaction: ButtonInteraction) => {
-  if (interaction.customId === BUTTON_ID.JOIN) {
+  const { customId } = interaction;
+  if (customId === BUTTON_ID.JOIN) {
     joinButton.execute(interaction);
+    return;
+  }
+  if (customId === BUTTON_ID.EXPECT_SEND) {
+    expectSendButton.execute(interaction);
+  }
+};
+
+export const playerSelectMenus = (interaction: StringSelectMenuInteraction) => {
+  const { customId } = interaction;
+  if (customId === SELECT_MENU_ID.EXPECT_COUNT) {
+    expectCountSelect.execute(interaction);
   }
 };
 
@@ -161,63 +167,33 @@ export const sendCardsHand = async (client: Client, player: Player) => {
   user.send({ embeds: [embed] });
 };
 
-export const urgeToExpect = (client: Client, player: Player) => {
+export const urgeToExpect = async (client: Client, player: Player) => {
+  const game = games[player.guildId];
+  if (game === undefined) {
+    return;
+  }
   if (player.isCp) {
     const { gameCount } = games[player.guildId]!;
     player.countExpected = Math.floor(Math.random() * (gameCount + 1));
     return;
   }
-  const description = 'チャットで数字を送って勝利数を予想しようね';
+  const description = '勝利数を選んで送信しようね';
   const embed: APIEmbed = {
     title: '勝利数を予想しよう！',
     color: colors.info,
     description,
   };
-  sendPrivateMessage(client, player, { embeds: [embed] });
-};
-
-export const expectWinningCount = async (message: Message) => {
-  const discordId = message.author.id;
-  const player = currentPlayers.find((p) => p.discordId === discordId);
-  if (player === undefined) {
-    await message.channel.send(`<@!${discordId}> だれ？`);
-    return;
-  }
-  if (message.guild !== null) {
-    await message.channel.send(`<@!${discordId}> DMでこっそり教えてほしいよー`);
-    return;
-  }
-  if (player.countExpected !== null) {
-    await message.channel.send(`やり直しは効かぬのだ...！`);
-    return;
-  }
-  const count = Number(message.content);
-  if (Number.isNaN(count)) {
-    await message.channel.send(`数字を教えてほしいよー`);
-    return;
-  }
-  const { gameCount, players } = games[player.guildId]!;
-  if (count < 0 || gameCount < count) {
-    await message.channel.send(`0から${gameCount}までの数字にしてよー`);
-    return;
-  }
-  player.countExpected = count;
-  message.channel.send(`${count}回だねーおっけー`);
-  if (!players.every(({ countExpected }) => countExpected !== null)) {
-    return;
-  }
-  const guild = message.client.guilds.cache.get(player.guildId)!;
-  const channel = guild.channels.cache.get(player.channelId)! as TextChannel;
-  await sendEveryPlayerExpectedCount(channel, players);
-  const first = players[0];
-  games[player.guildId]!.status = 'putting';
-  for (const player of players.filter((p) => !p.isCp)) {
-    const user = message.client.users.cache.get(player.discordId)!;
-    await sendEveryPlayerExpectedCount(user, players);
-  }
-  const publicMessage = `${first.name}くんから始めんぞい！`;
-  await sendAllMessage(message.client, player, publicMessage);
-  await urgeToPutDownCard(message, first);
+  const selectRow = new ActionRowBuilder().addComponents(
+    expectCountSelect.component(game.gameCount),
+  );
+  const buttonRow = new ActionRowBuilder().addComponents(
+    expectSendButton.component,
+  );
+  await sendPrivateMessage(client, player, {
+    embeds: [embed],
+    // @ts-ignore
+    components: [selectRow, buttonRow],
+  });
 };
 
 export const urgeToPutDownCard = async (
