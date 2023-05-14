@@ -12,11 +12,22 @@ import {
   StringSelectMenuInteraction,
   ActionRowBuilder,
 } from 'discord.js';
-import { Card, convertCardValue, TigresType } from './cards';
+import { Card, convertCardValue } from './cards';
 import { colors } from './embedColor';
 import { sendEveryPlayerHand, games, putOutCard, cpPut } from './game';
-import { BUTTON_ID, expectSendButton, joinButton } from '../components/buttons';
-import { SELECT_MENU_ID, expectCountSelect } from '../components/selectMenus';
+import {
+  BUTTON_ID,
+  cardSelectSendButton,
+  expectSendButton,
+  joinButton,
+  tigresEscapeButton,
+  tigresPiratesButton,
+} from '../components/buttons';
+import {
+  SELECT_MENU_ID,
+  cardSelect,
+  expectCountSelect,
+} from '../components/selectMenus';
 
 export type Player = {
   discordId: string;
@@ -25,6 +36,7 @@ export type Player = {
   channelId: string;
   cardsHand: Card[];
   selectedCountExpected: number | null;
+  selectedCardIndex: number | null;
   countExpected: number | null;
   countActual: number;
   point: number;
@@ -83,14 +95,6 @@ export async function sendPublicMessage(
 
 export const playerCommands = (message: Message) => {
   const command = message.content.split(' ');
-  const player = currentPlayers.find((p) => p.discordId === message.author.id);
-  const status = games[player?.guildId ?? 'あほのID']?.status;
-  if (!Number.isNaN(Number(command[0]))) {
-    if (status === 'putting') {
-      put(message);
-      return;
-    }
-  }
   if (command[0] === '!bye') {
     bye(message);
     return;
@@ -117,6 +121,17 @@ export const playerButtons = (interaction: ButtonInteraction) => {
   }
   if (customId === BUTTON_ID.EXPECT_SEND) {
     expectSendButton.execute(interaction);
+  }
+  if (customId === BUTTON_ID.CARD_SELECT_SEND) {
+    cardSelectSendButton.execute(interaction);
+    return;
+  }
+  if (customId === BUTTON_ID.TIGRES_PIRATES) {
+    tigresPiratesButton.execute(interaction);
+    return;
+  }
+  if (customId === BUTTON_ID.TIGRES_ESCAPE) {
+    tigresEscapeButton.execute(interaction);
   }
 };
 
@@ -204,114 +219,56 @@ export const urgeToPutDownCard = async (
     await cpPut(interaction, player);
     return;
   }
-  const description =
-    '順番回ってきちゃったんでカード出そうね\n\n' +
-    '何枚目のカード出すか教えてほし〜\n' +
-    '例えば`2`と入力すると2枚目のカードを出すことになるよ';
+  const description = '順番回ってきちゃったんでカード出そうね';
   const embed: APIEmbed = {
     title: 'カードを出すんだぞい',
     description,
     color: colors.info,
   };
+  const { cardsHand, guildId } = player;
+  if (!(guildId in games)) {
+    await interaction.reply('芸術は爆発だ');
+    return;
+  }
+  const { currentColor } = games[guildId]!;
+  const selectRow = new ActionRowBuilder().addComponents(
+    cardSelect.component(cardsHand, currentColor),
+  );
+  const sendRow = new ActionRowBuilder().addComponents(
+    cardSelectSendButton.component,
+  );
   await sendPrivateMessage(interaction.client, player, { embeds: [embed] });
   await sendEveryPlayerHand(interaction.client, player);
   await sendCardsHand(interaction.client, player);
+  await sendPrivateMessage(interaction.client, player, {
+    // @ts-ignore
+    components: [selectRow, sendRow],
+  });
 };
 
-const colorText = {
-  green: '緑',
-  yellow: '黄',
-  purple: '紫',
-  black: '黒',
-};
-
-const putOut = async (message: Message, putOutIndex: number) => {
-  const player = currentPlayers.find((p) => p.discordId === message.author.id)!;
-  const card = player.cardsHand[putOutIndex];
-  if ('type' in card) {
-    await putOutCard(message, player, putOutIndex);
-    return;
-  }
-  const { currentColor } = games[player.guildId]!;
-  const hasColor = player.cardsHand.some(
-    (card) => 'color' in card && card.color === currentColor,
-  );
-  if (hasColor && card.color !== currentColor) {
-    message.channel.send(
-      `${colorText[currentColor!]}色持ってんのに${
-        colorText[card.color]
-      }色出しちゃだめだぞぉ♡`,
-    );
-    return;
-  }
-  await putOutCard(message, player, putOutIndex);
-};
-
-const canPutOutByHandCount = (player: Player) => {
-  const { players, playerTurnIndex } = games[player.guildId]!;
-  const opponents = players.filter((p) => p.discordId !== player.discordId);
-  const handCount = player.cardsHand.length;
-  if (playerTurnIndex === 0) {
-    return opponents.every((p) => p.cardsHand.length === handCount);
-  }
-  if (playerTurnIndex === players.length - 1) {
-    return opponents.every((p) => p.cardsHand.length === handCount - 1);
-  }
-  const maxHandCount = Math.max(...opponents.map((p) => p.cardsHand.length));
-  return handCount === maxHandCount;
-};
-
-// eslint-disable-next-line complexity
-const put = async (message: Message) => {
-  const player = currentPlayers.find((p) => p.discordId === message.author.id);
-  if (player === undefined) {
-    return;
-  }
-  const { players, playerTurnIndex, status } = games[player.guildId]!;
-  if (status !== 'putting') {
-    await message.channel.send('その時はまだ早し...');
-    return;
-  }
-  if (player.discordId !== players[playerTurnIndex].discordId) {
-    await message.channel.send('まだターン回ってきてないよー');
-    return;
-  }
-  if (!canPutOutByHandCount(player)) {
-    await message.channel.send('なんか2枚以上出そうとしてない？');
-    return;
-  }
-  const commands = message.content.split(' ');
-  const inputNumber = Number(commands[0]);
-  if (Number.isNaN(inputNumber)) {
-    await message.channel.send('数字を教えてほしいよー');
-    return;
-  }
+export const putOut = async (
+  interaction: MessageComponentInteraction,
+  putOutIndex: number,
+) => {
+  const player = currentPlayers.find(
+    (p) => p.discordId === interaction.user.id,
+  )!;
   const { cardsHand } = player;
-  if (cardsHand.length === 1 && inputNumber !== 1) {
-    await message.channel.send('1枚しかないよー');
-    return;
-  }
-  if (inputNumber < 1 || inputNumber > cardsHand.length) {
-    await message.channel.send(
-      `1から${cardsHand.length}までの数字を教えてほしいよー`,
+  const card = cardsHand[putOutIndex];
+  if ('type' in card && card.type === 'tigres' && card.tigresType === null) {
+    const row = new ActionRowBuilder().addComponents(
+      tigresPiratesButton.component,
+      tigresEscapeButton.component,
     );
+    await sendPrivateMessage(interaction.client, player, {
+      content: 'ティグレスどっちー？',
+      // @ts-ignore
+      components: [row],
+    });
     return;
   }
-  const card = cardsHand[inputNumber - 1];
-  if ('type' in card && card.type === 'tigres') {
-    if (commands.length < 2 || !['pirates', 'escape'].includes(commands[1])) {
-      await message.channel.send(
-        'ティグレスを使うときは`pirates`か`escape`を入力してね\n' +
-          `\`${inputNumber} pirates\`もしくは\`${inputNumber} escape\``,
-      );
-      return;
-    }
-  }
-  const tigresType = (commands[1] ?? null) as TigresType;
-  if ('type' in card) {
-    card.tigresType = tigresType;
-  }
-  await putOut(message, inputNumber - 1);
+  player.selectedCardIndex = null;
+  await putOutCard(interaction, player, putOutIndex);
 };
 
 const getHistoryPlayer = async (message: Message) => {

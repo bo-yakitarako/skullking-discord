@@ -34,7 +34,11 @@ import {
   startButton,
   startCancelButton,
 } from '../components/buttons';
-import { SELECT_MENU_ID, cpuCountSelect } from '../components/selectMenus';
+import {
+  SELECT_MENU_ID,
+  cardSelect,
+  cpuCountSelect,
+} from '../components/selectMenus';
 
 type Game = {
   status: 'ready' | 'expecting' | 'putting' | 'finish';
@@ -88,6 +92,10 @@ export const gameSelectMenus = (interaction: StringSelectMenuInteraction) => {
   const { customId } = interaction;
   if (customId === SELECT_MENU_ID.CPU_COUNT) {
     cpuCountSelect.execute(interaction);
+    return;
+  }
+  if (customId === SELECT_MENU_ID.CARD_SELECT) {
+    cardSelect.execute(interaction);
   }
 };
 

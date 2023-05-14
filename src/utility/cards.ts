@@ -76,13 +76,27 @@ const cardValue = {
   yellow: ':yellow_square:',
   purple: ':purple_square:',
   black: ':black_large_square:',
-  skullking: 'スカルキング :skull:',
-  pirates: '海賊 :crossed_swords:',
-  mermaids: 'マーメイド :mermaid:',
-  escape: '逃走 :runner:',
-  gold: '略奪品 :gem:',
-  tigres: 'ティグレス :woman_superhero:',
-  kraken: 'クラーケン :octopus:',
+  skullking: ':skull: スカルキング',
+  pirates: ':crossed_swords: 海賊',
+  mermaids: ':mermaid: マーメイド',
+  escape: ':runner: 逃走',
+  gold: ':gem: 略奪品',
+  tigres: ':woman_superhero: ティグレス',
+  kraken: ':octopus: クラーケン',
+};
+
+export const emojis = {
+  green: '🟩',
+  yellow: '🟨',
+  purple: '🟪',
+  black: '⬛',
+  skullking: '💀',
+  pirates: '⚔️',
+  mermaids: '🧜‍♀️',
+  escape: '🏃',
+  gold: '💎',
+  tigres: '🦸‍♀️',
+  kraken: '🐙',
 };
 
 export const convertCardValue = (card: Card) => {
@@ -98,4 +112,22 @@ export const convertCardValue = (card: Card) => {
     return `${cardValue[type]} (${cardValue[tigresType]})`;
   }
   return cardValue[type];
+};
+
+export const convertCardSelectMenuValue = (card: Card) => {
+  if ('color' in card) {
+    const label = `${card.number}`;
+    const emoji = emojis[card.color];
+    return { label, emoji };
+  }
+  const { type, escapeType } = card;
+  if (escapeType !== undefined) {
+    const prop = escapeType === 'standard' ? 'escape' : escapeType;
+    const label = cardValue[prop].split(' ')[1];
+    const emoji = emojis[prop];
+    return { label, emoji };
+  }
+  const label = cardValue[type].split(' ')[1];
+  const emoji = emojis[type];
+  return { label, emoji };
 };

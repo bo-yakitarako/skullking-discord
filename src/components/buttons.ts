@@ -16,11 +16,12 @@ import {
   currentPlayers,
   getDisplayName,
   mention,
+  putOut,
   sendAllMessage,
   urgeToExpect,
   urgeToPutDownCard,
 } from '../utility/player';
-import { shuffle } from '../utility/cards';
+import { SpecialCard, emojis, shuffle } from '../utility/cards';
 import { cpuCountSelect } from './selectMenus';
 
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -30,6 +31,9 @@ export const BUTTON_ID = {
   CPU_SET: 'cpu-set',
   START_CANCEL: 'start-cancel',
   EXPECT_SEND: 'expect-send',
+  CARD_SELECT_SEND: 'card-select-send',
+  TIGRES_PIRATES: 'tigres-pirates',
+  TIGRES_ESCAPE: 'tigres-escape',
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -39,38 +43,36 @@ export const joinButton = {
     .setLabel('参加する')
     .setStyle(ButtonStyle.Primary),
   execute: async (interaction: ButtonInteraction) => {
+    await interaction.deferUpdate();
     const guildId = interaction.guild?.id ?? 'あほのID';
     const at = mention(interaction.user);
     if (!(guildId in games)) {
       await interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
-      await interaction.deferUpdate();
       return;
     }
     const discordId = interaction.user.id;
     if (currentPlayers.some((p) => p.discordId === discordId)) {
       await interaction.channel?.send(`${at} おめぇの席あるから！`);
-      await interaction.deferUpdate();
       return;
     }
     if (games[guildId]!.status !== 'ready') {
       await interaction.channel?.send(
         `${at} 他の人たちやってるぽいからちょっとお待ちー`,
       );
-      await interaction.deferUpdate();
       return;
     }
     if (games[guildId]!.players.length >= 6) {
       await interaction.channel?.send(`${at} 人数いっぱいいっぱい`);
-      await interaction.deferUpdate();
       return;
     }
-    const player = {
+    const player: Player = {
       discordId,
       name: getDisplayName(interaction),
       guildId,
       channelId: interaction.channel!.id,
       cardsHand: [],
       selectedCountExpected: null,
+      selectedCardIndex: null,
       countExpected: null,
       countActual: 0,
       point: 0,
@@ -81,7 +83,6 @@ export const joinButton = {
     games[guildId]!.players.push(player);
     currentPlayers.push(player);
     await interaction.channel?.send(`${player.name}が入ったぞい！`);
-    await interaction.deferUpdate();
   },
 };
 
@@ -91,18 +92,18 @@ export const startButton = {
     .setLabel('スタート')
     .setStyle(ButtonStyle.Primary),
   execute: async (interaction: ButtonInteraction) => {
+    await interaction.deferUpdate();
     const guildId = interaction.guild?.id ?? 'あほのID';
     const at = mention(interaction.user);
     if (!(guildId in games)) {
       await interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
-      await interaction.deferUpdate();
       return;
     }
     if (games[guildId]!.players.length === 0) {
       await interaction.channel?.send(`${at} 誰もいないよー`);
-      await interaction.deferUpdate();
       return;
     }
+    await interaction.message.delete();
     games[guildId]!.players = games[guildId]!.players.filter((p) => !p.isCp);
     games[guildId]!.cpuCount = 0;
     const maxCpuCount = 6 - games[guildId]!.players.length;
@@ -118,7 +119,6 @@ export const startButton = {
       // @ts-ignore
       components: [cpuRow, cancelRow],
     });
-    await interaction.message.delete();
   },
 };
 
@@ -130,17 +130,17 @@ export const cpuSetButton = {
   execute: async (interaction: ButtonInteraction) => {
     const guildId = interaction.guild?.id ?? 'あほのID';
     const at = mention(interaction.user);
+    await interaction.deferUpdate();
     if (!(guildId in games)) {
       interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
-      await interaction.deferUpdate();
       return;
     }
     const { players, cpuCount } = games[guildId]!;
     if (players.length + cpuCount < 2) {
       await interaction.channel?.send(`${at} 人数足りないよー`);
-      await interaction.deferUpdate();
       return;
     }
+    await interaction.message.delete();
     for (let i = 0; i < games[guildId]!.cpuCount; i += 1) {
       const cp: Player = {
         discordId: '',
@@ -149,6 +149,7 @@ export const cpuSetButton = {
         channelId: interaction.channel!.id,
         cardsHand: [],
         selectedCountExpected: null,
+        selectedCardIndex: null,
         countExpected: null,
         countActual: 0,
         point: 0,
@@ -163,13 +164,11 @@ export const cpuSetButton = {
     await displayTurns(interaction);
     await dealCards(interaction);
     await interaction.channel?.send('DMで予想した勝利数を教えてちょー');
-    await interaction.deferUpdate();
     games[guildId]!.players.forEach((player) => {
       player.point = 0;
       player.history = [];
       urgeToExpect(interaction.client, player);
     });
-    await interaction.message.delete();
   },
 };
 
@@ -199,25 +198,24 @@ export const expectSendButton = {
     .setLabel('送信')
     .setStyle(ButtonStyle.Primary),
   execute: async (interaction: ButtonInteraction) => {
+    await interaction.deferUpdate();
     const discordId = interaction.user.id;
     const player = currentPlayers.find((p) => p.discordId === discordId);
     const at = mention(interaction.user);
     if (player === undefined) {
       await interaction.user.send(`${at} だれ？`);
-      await interaction.deferUpdate();
       return;
     }
     const count = player.selectedCountExpected;
     if (count === null) {
       await interaction.user.send(`${at} 回数えらんでー`);
-      await interaction.deferUpdate();
       return;
     }
     const { players } = games[player.guildId]!;
     player.countExpected = count;
     await interaction.user.send(`${count}回だねーおっけー`);
+    await interaction.message.delete();
     if (!players.every(({ countExpected }) => countExpected !== null)) {
-      await interaction.deferUpdate();
       return;
     }
     const guild = interaction.client.guilds.cache.get(player.guildId)!;
@@ -232,7 +230,57 @@ export const expectSendButton = {
     const publicMessage = `${first.name}くんから始めんぞい！`;
     await sendAllMessage(interaction.client, player, publicMessage);
     await urgeToPutDownCard(interaction, first);
-    await interaction.message.delete();
-    await interaction.deferUpdate();
   },
 };
+
+export const cardSelectSendButton = {
+  component: new ButtonBuilder()
+    .setCustomId(BUTTON_ID.CARD_SELECT_SEND)
+    .setLabel('送信')
+    .setStyle(ButtonStyle.Primary),
+  execute: async (interaction: ButtonInteraction) => {
+    await interaction.deferUpdate();
+    const player = currentPlayers.find(
+      (p) => p.discordId === interaction.user.id,
+    );
+    if (player === undefined) {
+      await interaction.user.send('芸術は爆発だ');
+      return;
+    }
+    const { selectedCardIndex } = player;
+    if (selectedCardIndex === null) {
+      await interaction.user.send('カード選んでー');
+      return;
+    }
+    await interaction.message.delete();
+    await putOut(interaction, selectedCardIndex);
+  },
+};
+
+const tigresButtonGenerator = (type: 'pirates' | 'escape') => {
+  const label = type === 'pirates' ? '海賊' : '逃走';
+  const emoji = emojis[type];
+  const component = new ButtonBuilder()
+    .setCustomId(`tigres-${type}`)
+    .setLabel(label)
+    .setStyle(ButtonStyle.Primary)
+    .setEmoji(emoji);
+  const execute = async (interaction: ButtonInteraction) => {
+    await interaction.deferUpdate();
+    const player = currentPlayers.find(
+      (p) => p.discordId === interaction.user.id,
+    );
+    if (player === undefined) {
+      await interaction.user.send('芸術は爆発だ');
+      return;
+    }
+    const { selectedCardIndex } = player;
+    (player.cardsHand[selectedCardIndex!] as SpecialCard).tigresType = type;
+    await interaction.message.delete();
+    await putOut(interaction, selectedCardIndex!);
+  };
+  return { component, execute };
+};
+
+export const tigresPiratesButton = tigresButtonGenerator('pirates');
+export const tigresEscapeButton = tigresButtonGenerator('escape');
