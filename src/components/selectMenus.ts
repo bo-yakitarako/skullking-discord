@@ -1,17 +1,20 @@
 import {
+  APIEmbed,
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
   StringSelectMenuOptionBuilder,
 } from 'discord.js';
 import { games } from '../utility/game';
-import { currentPlayers, mention } from '../utility/player';
+import { Player, currentPlayers, mention } from '../utility/player';
 import { Card, Color, convertCardSelectMenuValue } from '../utility/cards';
+import { colors } from '../utility/embedColor';
 
 /* eslint-disable @typescript-eslint/naming-convention */
 export const SELECT_MENU_ID = {
   CPU_COUNT: 'cpu-count',
   EXPECT_COUNT: 'expect-count',
   CARD_SELECT: 'card-select',
+  HISTORY_SELECT: 'history-select',
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -100,5 +103,43 @@ export const cardSelect = {
       return;
     }
     player.selectedCardIndex = Number(interaction.values[0]);
+  },
+};
+
+export const historySelect = {
+  component: (players: Player[]) => {
+    const component = new StringSelectMenuBuilder()
+      .setCustomId(SELECT_MENU_ID.HISTORY_SELECT)
+      .setPlaceholder('戦績見ちゃう？');
+    const menus = players.map(({ name }, index) =>
+      new StringSelectMenuOptionBuilder()
+        .setLabel(`${name}くんの戦績`)
+        .setValue(`${index}`),
+    );
+    return component.addOptions(menus);
+  },
+  execute: async (interaction: StringSelectMenuInteraction) => {
+    await interaction.deferUpdate();
+    const playerId = interaction.user.id;
+    const guildPlayer = currentPlayers.find((p) => p.discordId === playerId);
+    const game = games[guildPlayer?.guildId ?? 'あほのID'];
+    if (game === undefined) {
+      await interaction.user.send('芸術は爆発だ');
+      return;
+    }
+    const player = game.players[Number(interaction.values[0])];
+    const { name, history, point } = player;
+    const fields = history.map((point, index) => ({
+      name: `${index + 1}戦目`,
+      value: `${point > 0 ? '+' : ''}${point}`,
+      inline: true,
+    }));
+    const embed: APIEmbed = {
+      title: `${name}の戦績！`,
+      description: `合計**${point}点**`,
+      color: colors.info,
+      fields,
+    };
+    await interaction.channel?.send({ embeds: [embed] });
   },
 };

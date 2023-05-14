@@ -1,11 +1,7 @@
 import { Client, GatewayIntentBits, Events } from 'discord.js';
 import { config } from 'dotenv';
 import { gameButtons, gameCommands, gameSelectMenus } from './utility/game';
-import {
-  playerButtons,
-  playerCommands,
-  playerSelectMenus,
-} from './utility/player';
+import { playerButtons, playerSelectMenus } from './utility/player';
 
 config();
 
@@ -25,7 +21,6 @@ client.once(Events.ClientReady, () => {
 client.on(Events.MessageCreate, (message) => {
   if (message.author.bot) return;
   gameCommands(message);
-  playerCommands(message);
 });
 
 client.on(Events.InteractionCreate, (interaction) => {

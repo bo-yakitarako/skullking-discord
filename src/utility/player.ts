@@ -94,26 +94,6 @@ export async function sendPublicMessage(
   await channel.send(message);
 }
 
-export const playerCommands = (message: Message) => {
-  const command = message.content.split(' ');
-  if (command[0] === '!bye') {
-    bye(message);
-    return;
-  }
-  if (command[0] === '!history') {
-    showHistory(message);
-    return;
-  }
-  if (command[0] === '!check') {
-    const player = currentPlayers.find(
-      (p) => p.discordId === message.author.id,
-    );
-    if (player !== undefined) {
-      sendCardsHand(message.client, player);
-    }
-  }
-};
-
 export const playerButtons = (interaction: ButtonInteraction) => {
   const { customId } = interaction;
   if (customId === BUTTON_ID.JOIN) {
@@ -274,43 +254,6 @@ export const putOut = async (
   }
   player.selectedCardIndex = null;
   await putOutCard(interaction, player, putOutIndex);
-};
-
-const getHistoryPlayer = async (message: Message) => {
-  const player = currentPlayers.find((p) => p.discordId === message.author.id);
-  if (player === undefined) {
-    return null;
-  }
-  const targetNumber = Number(message.content.split(' ')[1]);
-  if (Number.isNaN(targetNumber)) {
-    return player;
-  }
-  const { players } = games[player.guildId]!;
-  if (targetNumber < 1 || targetNumber > players.length) {
-    await message.channel.send(`1から${players.length}にしてね`);
-    return null;
-  }
-  return players[targetNumber - 1];
-};
-
-const showHistory = async (message: Message) => {
-  const player = await getHistoryPlayer(message);
-  if (player === null) {
-    return;
-  }
-  const { name, history } = player;
-  const fields = history.map((point, index) => ({
-    name: `${index + 1}戦目`,
-    value: `${point > 0 ? '+' : ''}${point}`,
-    inline: true,
-  }));
-  const embed: APIEmbed = {
-    title: `${name}の戦績！`,
-    description: `合計**${player.point}点**`,
-    color: colors.info,
-    fields,
-  };
-  await message.channel.send({ embeds: [embed] });
 };
 
 export const bye = async (

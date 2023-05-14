@@ -40,6 +40,7 @@ import {
   SELECT_MENU_ID,
   cardSelect,
   cpuCountSelect,
+  historySelect,
 } from '../components/selectMenus';
 
 type Game = {
@@ -62,7 +63,7 @@ type Games = { [guildId in string]?: Game };
 
 export const games: Games = {};
 
-const GAME_COUNT = 1;
+const GAME_COUNT = 10;
 
 export const gameCommands = (message: Message) => {
   const command = message.content.split(' ');
@@ -102,6 +103,10 @@ export const gameSelectMenus = (interaction: StringSelectMenuInteraction) => {
   }
   if (customId === SELECT_MENU_ID.CARD_SELECT) {
     cardSelect.execute(interaction);
+    return;
+  }
+  if (customId === SELECT_MENU_ID.HISTORY_SELECT) {
+    historySelect.execute(interaction);
   }
 };
 
@@ -156,30 +161,27 @@ export const displayTurns = async (
   const turns = players
     .map(({ name }, index) => `${index + 1}. ${name}`)
     .join('\n');
-  const historyMessage =
-    '`!history [何番目の人か]`でその人の戦績を表示するよ\n自分の見たければ`!history`だけでもよさぽよ〜';
-  const embedBase: APIEmbed = {
+  const embed: APIEmbed = {
     title: '順番',
-    description: `${turns}\n\n${historyMessage}`,
+    description: `${turns}`,
     color: colors.info,
   };
   if (players.every((p) => p.countExpected !== null)) {
-    embedBase.fields = players.map(({ name, countExpected, countActual }) => ({
+    embed.fields = players.map(({ name, countExpected, countActual }) => ({
       name: `${name}くんの現状`,
       value: `予想: ${countExpected}\n勝数: ${countActual}`,
     }));
   }
+  const row = new ActionRowBuilder().addComponents(
+    historySelect.component(players),
+  );
+  const data = { embeds: [embed], components: [row] };
   for (const p of players) {
-    const embed = { ...embedBase };
-    if (embed.fields !== undefined) {
-      const index = players.findIndex((ps) => ps.discordId === p.discordId);
-      embed.fields = embed.fields.filter((_, i) => i !== index);
-    }
-    await sendPrivateMessage(interaction.client, p, { embeds: [embed] });
+    // @ts-ignore
+    await sendPrivateMessage(interaction.client, p, data);
   }
-  await sendPublicMessage(interaction.client, players[0], {
-    embeds: [embedBase],
-  });
+  // @ts-ignore
+  await sendPublicMessage(interaction.client, players[0], data);
 };
 
 export const dealCards = async (interaction: MessageComponentInteraction) => {
