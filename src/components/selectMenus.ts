@@ -37,7 +37,7 @@ export const cpuCountSelect = {
     const guildId = interaction.guild?.id ?? 'あほのID';
     const at = mention(interaction.user);
     if (!(guildId in games)) {
-      await interaction.user.send(`${at} \`!launch\`で起動しようね`);
+      await interaction.user.send(`${at} \`/launch\`で起動しようね`);
       return;
     }
     if (games[guildId]!.status !== 'ready') {

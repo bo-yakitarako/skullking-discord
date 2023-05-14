@@ -51,7 +51,7 @@ export const joinButton = {
     const guildId = interaction.guild?.id ?? 'あほのID';
     const at = mention(interaction.user);
     if (!(guildId in games)) {
-      await interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
+      await interaction.channel?.send(`${at} \`/launch\`で起動しようね`);
       return;
     }
     const discordId = interaction.user.id;
@@ -100,7 +100,7 @@ export const startButton = {
     const guildId = interaction.guild?.id ?? 'あほのID';
     const at = mention(interaction.user);
     if (!(guildId in games)) {
-      await interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
+      await interaction.channel?.send(`${at} \`/launch\`で起動しようね`);
       return;
     }
     const { players, status } = games[guildId]!;
@@ -147,7 +147,7 @@ export const cpuSetButton = {
     const at = mention(interaction.user);
     await interaction.deferUpdate();
     if (!(guildId in games)) {
-      interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
+      interaction.channel?.send(`${at} \`/launch\`で起動しようね`);
       return;
     }
     const { players, cpuCount, status } = games[guildId]!;
@@ -201,7 +201,7 @@ export const startCancelButton = {
     const guildId = interaction.guild?.id ?? 'あほのID';
     const at = mention(interaction.user);
     if (!(guildId in games)) {
-      await interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
+      await interaction.channel?.send(`${at} \`/launch\`で起動しようね`);
       return;
     }
     if (games[guildId]!.status !== 'ready') {
