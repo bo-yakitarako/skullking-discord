@@ -103,12 +103,23 @@ export const startButton = {
       await interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
       return;
     }
-    if (games[guildId]!.players.length === 0) {
+    const { players, status } = games[guildId]!;
+    if (players.length === 0) {
       await interaction.channel?.send(`${at} 誰もいないよー`);
       return;
     }
+    if (!players.some((p) => p.discordId === interaction.user.id)) {
+      await interaction.channel?.send(`${at} 参加してねー`);
+      return;
+    }
+    if (status !== 'ready') {
+      await interaction.channel?.send(
+        `${at} 他の人たちやってるぽいからちょっとお待ちー`,
+      );
+      return;
+    }
     await interaction.message.delete();
-    games[guildId]!.players = games[guildId]!.players.filter((p) => !p.isCp);
+    games[guildId]!.players = players.filter((p) => !p.isCp);
     games[guildId]!.cpuCount = 0;
     const maxCpuCount = 6 - games[guildId]!.players.length;
     const cpuRow = new ActionRowBuilder().addComponents(
