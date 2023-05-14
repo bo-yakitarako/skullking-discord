@@ -2,8 +2,8 @@ import {
   APIEmbed,
   ActionRowBuilder,
   ButtonInteraction,
+  ChatInputCommandInteraction,
   Client,
-  Message,
   MessageComponentInteraction,
   StringSelectMenuInteraction,
   TextChannel,
@@ -42,6 +42,7 @@ import {
   cpuCountSelect,
   historySelect,
 } from '../components/selectMenus';
+import { launchCommand, resetCommand } from '../components/slashCommands';
 
 type Game = {
   status: 'ready' | 'expecting' | 'putting' | 'finish';
@@ -65,14 +66,14 @@ export const games: Games = {};
 
 const GAME_COUNT = 10;
 
-export const gameCommands = (message: Message) => {
-  const command = message.content.split(' ');
-  if (command[0] === '!launch') {
-    launch(message);
+export const gameCommands = (interaction: ChatInputCommandInteraction) => {
+  const { commandName } = interaction;
+  if (commandName === launchCommand.data.name) {
+    launchCommand.execute(interaction);
     return;
   }
-  if (command[0] === '!reset') {
-    reset(message);
+  if (commandName === resetCommand.data.name) {
+    resetCommand.execute(interaction);
   }
 };
 
@@ -108,42 +109,6 @@ export const gameSelectMenus = (interaction: StringSelectMenuInteraction) => {
   if (customId === SELECT_MENU_ID.HISTORY_SELECT) {
     historySelect.execute(interaction);
   }
-};
-
-const launch = (message: Message) => {
-  if (message.guild === null) {
-    message.channel.send('あほしね');
-    return;
-  }
-  const guildId = message.guild.id;
-  if (games[guildId] !== undefined) {
-    const { players } = games[guildId]!;
-    players.forEach((p) => {
-      const index = currentPlayers.findIndex(
-        (ps) => ps.discordId === p.discordId,
-      );
-      currentPlayers.splice(index, 1);
-    });
-  }
-  games[guildId] = {
-    status: 'ready',
-    players: [],
-    cpuCount: 0,
-    gameCount: 1,
-    playerTurnIndex: 0,
-    cards: generateDeck(),
-    currentPutOut: [],
-    currentColor: null,
-    currentWinner: null,
-    deadCards: [],
-  };
-  const row = new ActionRowBuilder().addComponents([
-    joinButton.component,
-    startButton.component,
-  ]);
-  // componentsで型エラー出てるけど、バリバリ動いてたので無視
-  // @ts-ignore
-  message.channel.send({ content: 'すかき～ん', components: [row] });
 };
 
 export const displayTurns = async (
@@ -470,12 +435,11 @@ const finish = async (
 };
 
 export const reset = async (
-  callbackParam: Message | MessageComponentInteraction,
+  callbackParam: MessageComponentInteraction | ChatInputCommandInteraction,
 ) => {
   let guildId = callbackParam.guild?.id;
   if (guildId === undefined) {
-    const id =
-      'user' in callbackParam ? callbackParam.user.id : callbackParam.author.id;
+    const { id } = callbackParam.user;
     const p = currentPlayers.find((p) => p.discordId === id);
     guildId = p?.guildId;
     if (guildId === undefined) {
