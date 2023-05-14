@@ -150,9 +150,13 @@ export const cpuSetButton = {
       interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
       return;
     }
-    const { players, cpuCount } = games[guildId]!;
+    const { players, cpuCount, status } = games[guildId]!;
     if (players.length + cpuCount < 2) {
       await interaction.channel?.send(`${at} 人数足りないよー`);
+      return;
+    }
+    if (status !== 'ready') {
+      await interaction.channel?.send(`${at} なんだねチミは`);
       return;
     }
     await interaction.message.delete();
@@ -193,6 +197,17 @@ export const startCancelButton = {
     .setLabel('キャンセル')
     .setStyle(ButtonStyle.Danger),
   execute: async (interaction: ButtonInteraction) => {
+    await interaction.deferUpdate();
+    const guildId = interaction.guild?.id ?? 'あほのID';
+    const at = mention(interaction.user);
+    if (!(guildId in games)) {
+      await interaction.channel?.send(`${at} \`!launch\`で起動しようね`);
+      return;
+    }
+    if (games[guildId]!.status !== 'ready') {
+      await interaction.channel?.send(`${at} なんだねチミは`);
+      return;
+    }
     const row = new ActionRowBuilder().addComponents([
       joinButton.component,
       startButton.component,

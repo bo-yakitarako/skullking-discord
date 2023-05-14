@@ -40,6 +40,9 @@ export const cpuCountSelect = {
       await interaction.user.send(`${at} \`!launch\`で起動しようね`);
       return;
     }
+    if (games[guildId]!.status !== 'ready') {
+      return;
+    }
     const value = interaction.values[0];
     games[guildId]!.cpuCount = Number(value);
   },
