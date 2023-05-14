@@ -9,10 +9,12 @@ import {
   dealCards,
   displayTurns,
   games,
+  reset,
   sendEveryPlayerExpectedCount,
 } from '../utility/game';
 import {
   Player,
+  bye,
   currentPlayers,
   getDisplayName,
   mention,
@@ -34,6 +36,8 @@ export const BUTTON_ID = {
   CARD_SELECT_SEND: 'card-select-send',
   TIGRES_PIRATES: 'tigres-pirates',
   TIGRES_ESCAPE: 'tigres-escape',
+  BYE: 'bye',
+  RESET: 'reset',
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
@@ -284,3 +288,27 @@ const tigresButtonGenerator = (type: 'pirates' | 'escape') => {
 
 export const tigresPiratesButton = tigresButtonGenerator('pirates');
 export const tigresEscapeButton = tigresButtonGenerator('escape');
+
+export const byeButton = {
+  component: new ButtonBuilder()
+    .setCustomId(BUTTON_ID.BYE)
+    .setLabel('抜ける')
+    .setStyle(ButtonStyle.Secondary),
+  execute: async (interaction: ButtonInteraction) => {
+    await interaction.deferUpdate();
+    await interaction.message.delete();
+    await bye(interaction);
+  },
+};
+
+export const resetButton = {
+  component: new ButtonBuilder()
+    .setCustomId(BUTTON_ID.RESET)
+    .setLabel('ゲーム終了')
+    .setStyle(ButtonStyle.Danger),
+  execute: async (interaction: ButtonInteraction) => {
+    await interaction.deferUpdate();
+    await interaction.message.delete();
+    await reset(interaction);
+  },
+};

@@ -17,6 +17,7 @@ import { colors } from './embedColor';
 import { sendEveryPlayerHand, games, putOutCard, cpPut } from './game';
 import {
   BUTTON_ID,
+  byeButton,
   cardSelectSendButton,
   expectSendButton,
   joinButton,
@@ -132,6 +133,10 @@ export const playerButtons = (interaction: ButtonInteraction) => {
   }
   if (customId === BUTTON_ID.TIGRES_ESCAPE) {
     tigresEscapeButton.execute(interaction);
+    return;
+  }
+  if (customId === BUTTON_ID.BYE) {
+    byeButton.execute(interaction);
   }
 };
 
@@ -308,10 +313,11 @@ const showHistory = async (message: Message) => {
   await message.channel.send({ embeds: [embed] });
 };
 
-const bye = async (message: Message) => {
-  const index = currentPlayers.findIndex(
-    (p) => p.discordId === message.author.id,
-  );
+export const bye = async (
+  callbackParam: Message | MessageComponentInteraction,
+) => {
+  const id = 'user' in callbackParam ? callbackParam.user.id : callbackParam.id;
+  const index = currentPlayers.findIndex((p) => p.discordId === id);
   if (index < 0) {
     return;
   }
@@ -319,7 +325,7 @@ const bye = async (message: Message) => {
   const game = games[player.guildId]!;
   if (game.status !== 'ready') {
     await sendPrivateMessage(
-      message.client,
+      callbackParam.client,
       player,
       'プレイ中は途中で抜けられないよ><',
     );
@@ -330,5 +336,5 @@ const bye = async (message: Message) => {
     1,
   );
   currentPlayers.splice(index, 1);
-  await sendPrivateMessage(message.client, player, ':wave:');
+  await sendPrivateMessage(callbackParam.client, player, ':wave:');
 };

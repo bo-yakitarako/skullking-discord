@@ -29,8 +29,10 @@ import {
 } from './player';
 import {
   BUTTON_ID,
+  byeButton,
   cpuSetButton,
   joinButton,
+  resetButton,
   startButton,
   startCancelButton,
 } from '../components/buttons';
@@ -60,7 +62,7 @@ type Games = { [guildId in string]?: Game };
 
 export const games: Games = {};
 
-const GAME_COUNT = 10;
+const GAME_COUNT = 1;
 
 export const gameCommands = (message: Message) => {
   const command = message.content.split(' ');
@@ -85,6 +87,10 @@ export const gameButtons = (interaction: ButtonInteraction) => {
   }
   if (customId === BUTTON_ID.START_CANCEL) {
     startCancelButton.execute(interaction);
+    return;
+  }
+  if (customId === BUTTON_ID.RESET) {
+    resetButton.execute(interaction);
   }
 };
 
@@ -434,21 +440,41 @@ const finish = async (
     color: colors.pirates,
   };
   await sendAllMessage(interaction.client, players[0], { embeds: [embed] });
+  const restartRow = new ActionRowBuilder().addComponents([
+    joinButton.component,
+    startButton.component,
+  ]);
+  await sendPublicMessage(interaction.client, players[0], {
+    content: 'すかき～ん',
+    // @ts-ignore
+    components: [restartRow],
+  });
   game.cards = generateDeck();
   game.deadCards = [];
+  game.cpuCount = 0;
   game.gameCount = 1;
   game.status = 'ready';
-  const resumeMessage =
-    'またやる場合は鯖のチャンネルで`!start`って打ってね\n' +
-    '自分だけ抜ける場合は`!bye`って打ってね\n' +
-    '完全に終わらせる場合は`!reset`って打ってね';
-  await sendAllMessage(interaction.client, players[0], resumeMessage);
+  const finishButtonRow = new ActionRowBuilder().addComponents([
+    byeButton.component,
+    resetButton.component,
+  ]);
+  for (const player of players) {
+    await sendPrivateMessage(interaction.client, player, {
+      content: 'またやる場合は鯖のチャンネルでスタートボタンを押してね～',
+      // @ts-ignore
+      components: [finishButtonRow],
+    });
+  }
 };
 
-const reset = async (message: Message) => {
-  let guildId = message.guild?.id;
+export const reset = async (
+  callbackParam: Message | MessageComponentInteraction,
+) => {
+  let guildId = callbackParam.guild?.id;
   if (guildId === undefined) {
-    const p = currentPlayers.find((p) => p.discordId === message.author.id);
+    const id =
+      'user' in callbackParam ? callbackParam.user.id : callbackParam.author.id;
+    const p = currentPlayers.find((p) => p.discordId === id);
     guildId = p?.guildId;
     if (guildId === undefined) {
       return;
@@ -458,7 +484,7 @@ const reset = async (message: Message) => {
     return;
   }
   const game = games[guildId]!;
-  await sendAllMessage(message.client, game.players[0], ':wave:');
+  await sendAllMessage(callbackParam.client, game.players[0], ':wave:');
   game.players.forEach((p) => {
     const index = currentPlayers.findIndex(
       (cp) => cp.discordId === p.discordId,
