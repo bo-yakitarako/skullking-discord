@@ -37,7 +37,7 @@ const TOKEN = process.env.TOKEN as string;
 const CLIENT_ID = process.env.CLIENT_ID as string;
 const GUILD_ID = process.env.GUILD_ID ?? null;
 const commands = [launchCommand.data.toJSON(), resetCommand.data.toJSON()];
-const rest = new REST().setToken(TOKEN);
+const rest = new REST({ version: '10' }).setToken(TOKEN);
 (async () => {
   try {
     if (GUILD_ID !== null) {

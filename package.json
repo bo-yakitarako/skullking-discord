@@ -5,8 +5,8 @@
     "main": "dist/index.js",
     "scripts": {
         "start": "node ./dist/index.js",
-        "debug": "nodemon -L",
-        "build": "esbuild src/index.ts --bundle --minify --platform=node --outfile=dist/index.js --external:discord.js"
+        "dev": "nodemon -L",
+        "build": "esbuild src/main.ts --bundle --minify --platform=node --outfile=dist/index.js --external:discord.js"
     },
     "author": "bo-yakitarako",
     "license": "MIT",
@@ -24,11 +24,11 @@
         "eslint-plugin-prettier": "^3.1.4",
         "nodemon": "^2.0.7",
         "prettier": "^2.2.0",
-        "ts-node": "^9.1.1",
-        "typescript": "^3.9.3"
+        "ts-node": "^10.9.2",
+        "typescript": "^5.8.3"
     },
     "dependencies": {
-        "discord.js": "^14.11.0",
+        "discord.js": "^14.21.0",
         "dotenv": "^10.0.0"
     }
 }
