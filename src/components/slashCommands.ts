@@ -1,60 +1,52 @@
 import {
-  ActionRowBuilder,
   ChatInputCommandInteraction,
+  MessageFlags,
   SlashCommandBuilder,
+  TextChannel,
 } from 'discord.js';
-import { games, reset } from '../utility/game';
-import { currentPlayers } from '../utility/player';
-import { generateDeck } from '../utility/cards';
-import { joinButton, startButton } from './buttons';
+import { battle } from '../battle/Skullking';
+import { makeButtonRow } from '../utils';
 
-export const launchCommand = {
-  data: new SlashCommandBuilder()
-    .setName('launch')
-    .setDescription('スカルキングを起動する'),
-  execute: async (interaction: ChatInputCommandInteraction) => {
-    if (interaction.guild === null) {
-      await interaction.reply('あほしね');
-      return;
-    }
-    const guildId = interaction.guild.id;
-    if (games[guildId] !== undefined) {
-      const { players } = games[guildId]!;
-      players.forEach((p) => {
-        const index = currentPlayers.findIndex(
-          (ps) => ps.discordId === p.discordId,
-        );
-        currentPlayers.splice(index, 1);
-      });
-    }
-    games[guildId] = {
-      status: 'ready',
-      players: [],
-      cpuCount: 0,
-      gameCount: 1,
-      playerTurnIndex: 0,
-      cards: generateDeck(),
-      currentPutOut: [],
-      currentColor: null,
-      currentWinner: null,
-      deadCards: [],
-    };
-    const row = new ActionRowBuilder().addComponents([
-      joinButton.component,
-      startButton.component,
-    ]);
-    // componentsで型エラー出てるけど、バリバリ動いてたので無視
-    // @ts-ignore
-    await interaction.reply({ content: 'すかき～ん', components: [row] });
+const flags = MessageFlags.Ephemeral;
+
+const registration = {
+  launch: {
+    data: new SlashCommandBuilder().setName('launch').setDescription('スカルキングを起動する'),
+    execute: async (interaction: ChatInputCommandInteraction) => {
+      if (battle.get(interaction) !== null) {
+        await interaction.reply({ content: 'もうすかきんしてるよ', flags });
+        return;
+      }
+      battle.create(interaction);
+      const content = 'すかき～ん';
+      const components = [makeButtonRow('join', 'start')];
+      await interaction.reply({ content, components });
+    },
+  },
+  reset: {
+    data: new SlashCommandBuilder().setName('reset').setDescription('ゲームをリセットして終了する'),
+    execute: async (interaction: ChatInputCommandInteraction) => {
+      const skullking = battle.get(interaction);
+      if (skullking === null) {
+        const content = 'この鯖ですかきんはしてないよ';
+        await interaction.reply({ content, flags });
+        return;
+      }
+      await interaction.reply({ content: 'ばいばーい', flags });
+      await skullking.sendToAll(':bye:');
+      battle.remove(interaction);
+    },
   },
 };
 
-export const resetCommand = {
-  data: new SlashCommandBuilder()
-    .setName('reset')
-    .setDescription('ゲームをリセットして終了する'),
-  execute: async (interaction: ChatInputCommandInteraction) => {
-    await interaction.reply('ばいばーい');
-    await reset(interaction);
-  },
+type CommandName = keyof typeof registration;
+
+export const commands = Object.values(registration).map(({ data }) => data.toJSON());
+export const slashCommandsInteraction = async (interaction: ChatInputCommandInteraction) => {
+  if (!(interaction.channel instanceof TextChannel)) {
+    await interaction.reply({ content: 'ほ？', flags });
+    return;
+  }
+  const commandName = interaction.commandName as CommandName;
+  await registration[commandName].execute(interaction);
 };

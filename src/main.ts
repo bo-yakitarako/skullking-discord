@@ -1,8 +1,8 @@
 import { Client, GatewayIntentBits, Events, REST, Routes } from 'discord.js';
 import { config } from 'dotenv';
-import { gameButtons, gameCommands, gameSelectMenus } from './utility/game';
-import { playerButtons, playerSelectMenus } from './utility/player';
-import { launchCommand, resetCommand } from './components/slashCommands';
+import { commands, slashCommandsInteraction } from './components/slashCommands';
+import { buttonInteraction } from './components/buttons';
+import { selectMenuInteraction } from './components/selectMenus';
 
 config();
 
@@ -16,27 +16,24 @@ const client = new Client({
 });
 
 client.once(Events.ClientReady, () => {
-  console.log('すかき〜ん');
+  console.log('すかき～ん');
 });
 
-client.on(Events.InteractionCreate, (interaction) => {
+client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isChatInputCommand()) {
-    gameCommands(interaction);
+    await slashCommandsInteraction(interaction);
   }
   if (interaction.isButton()) {
-    playerButtons(interaction);
-    gameButtons(interaction);
+    await buttonInteraction(interaction);
   }
   if (interaction.isStringSelectMenu()) {
-    playerSelectMenus(interaction);
-    gameSelectMenus(interaction);
+    await selectMenuInteraction(interaction);
   }
 });
 
 const TOKEN = process.env.TOKEN as string;
 const CLIENT_ID = process.env.CLIENT_ID as string;
 const GUILD_ID = process.env.GUILD_ID ?? null;
-const commands = [launchCommand.data.toJSON(), resetCommand.data.toJSON()];
 const rest = new REST({ version: '10' }).setToken(TOKEN);
 (async () => {
   try {
