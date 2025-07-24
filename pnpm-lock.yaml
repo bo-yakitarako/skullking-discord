@@ -30,6 +30,9 @@ importers:
       esbuild:
         specifier: ^0.25.8
         version: 0.25.8
+      eslint:
+        specifier: ^9.31.0
+        version: 9.31.0
       eslint-config-prettier:
         specifier: ^10.1.8
         version: 10.1.8(eslint@9.31.0)
