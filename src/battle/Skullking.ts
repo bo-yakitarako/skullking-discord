@@ -85,8 +85,11 @@ export class Skullking {
   }
 
   public async join(interaction: ButtonInteraction) {
-    if (this.gameStatus !== 'ready') {
-      const content = '他の人たちやってるぽいからちょっとお待ちを';
+    if (!(await this.checkStatus(interaction, 'ready'))) {
+      return;
+    }
+    if (this.attendees.some((p) => p.id === interaction.user.id)) {
+      const content = 'もうおるやんけ';
       await interaction.reply({ content, flags });
       return;
     }
@@ -337,6 +340,9 @@ export class Skullking {
   }
 
   public async bye(interaction: ButtonInteraction) {
+    if (!(await this.checkStatus(interaction, 'ready'))) {
+      return;
+    }
     const player = this.getInteractionPlayer(interaction);
     if (player === null) {
       await interaction.reply({ content: 'ほ？', flags });
@@ -348,6 +354,9 @@ export class Skullking {
   }
 
   public async reset(interaction: ButtonInteraction) {
+    if (!(await this.checkStatus(interaction, 'ready'))) {
+      return;
+    }
     await interaction.deferUpdate();
     await this.sendToAll(':bye:');
     battle.remove(interaction);

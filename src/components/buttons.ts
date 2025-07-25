@@ -48,6 +48,9 @@ const registration = {
       .setLabel('送信')
       .setStyle(ButtonStyle.Primary),
     async execute(interaction: ButtonInteraction, skullking: Skullking) {
+      if (!(await skullking.checkStatus(interaction, 'expecting'))) {
+        return;
+      }
       const player = skullking.getInteractionPlayer(interaction);
       if (player === null) {
         await interaction.reply({ content: 'だれ？', flags });
@@ -64,6 +67,9 @@ const registration = {
       .setLabel('カードを出す')
       .setStyle(ButtonStyle.Primary),
     async execute(interaction: ButtonInteraction, skullking: Skullking) {
+      if (!(await skullking.checkStatus(interaction, 'putting'))) {
+        return;
+      }
       const player = skullking.getInteractionPlayer(interaction);
       if (player === null) {
         await interaction.reply({ content: 'だれ？', flags });

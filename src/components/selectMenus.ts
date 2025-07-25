@@ -33,6 +33,9 @@ const registration = {
       return new StringSelectMenuBuilder().setCustomId('expectCount').addOptions(options);
     },
     async execute(interaction: StringSelectMenuInteraction, skullking: Skullking) {
+      if (!(await skullking.checkStatus(interaction, 'expecting'))) {
+        return;
+      }
       const player = skullking.getInteractionPlayer(interaction);
       if (player === null) {
         await interaction.reply({ content: 'ほ？', flags });
@@ -58,6 +61,9 @@ const registration = {
         .addOptions(menus);
     },
     async execute(interaction: StringSelectMenuInteraction, skullking: Skullking) {
+      if (!(await skullking.checkStatus(interaction, 'putting'))) {
+        return;
+      }
       const player = skullking.getInteractionPlayer(interaction);
       if (player === null) {
         await interaction.reply({ content: 'ほ？', flags });
