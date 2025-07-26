@@ -134,6 +134,15 @@ export class Skullking {
   }
 
   public permissions(id: string) {
+    const allow = [
+      PermissionFlagsBits.ViewChannel,
+      PermissionFlagsBits.SendMessages,
+      PermissionFlagsBits.ManageMessages,
+      PermissionFlagsBits.ReadMessageHistory,
+      PermissionFlagsBits.AddReactions,
+      PermissionFlagsBits.AttachFiles,
+      PermissionFlagsBits.EmbedLinks,
+    ];
     return [
       {
         id: this.channel.guild.roles.everyone.id,
@@ -141,14 +150,11 @@ export class Skullking {
       },
       {
         id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.ReadMessageHistory,
-          PermissionFlagsBits.AddReactions,
-          PermissionFlagsBits.AttachFiles,
-          PermissionFlagsBits.EmbedLinks,
-        ],
+        allow,
+      },
+      {
+        id: process.env.CLIENT_ID as string,
+        allow,
       },
     ];
   }
