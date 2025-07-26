@@ -29,8 +29,10 @@ const registration = {
       const options = [...Array(gameCount + 1)].map((_, index) =>
         new StringSelectMenuOptionBuilder().setLabel(`${index}回`).setValue(`${index}`),
       );
-      options[0].setDefault(true);
-      return new StringSelectMenuBuilder().setCustomId('expectCount').addOptions(options);
+      return new StringSelectMenuBuilder()
+        .setCustomId('expectCount')
+        .setPlaceholder('回数えらんでこー')
+        .addOptions(options);
     },
     async execute(interaction: StringSelectMenuInteraction, skullking: Skullking) {
       if (!(await skullking.checkStatus(interaction, 'expecting'))) {
@@ -57,7 +59,7 @@ const registration = {
       });
       return new StringSelectMenuBuilder()
         .setCustomId('cardSelect')
-        .setPlaceholder('カードを選んで送信しよう')
+        .setPlaceholder('カードえらんでこー')
         .addOptions(menus);
     },
     async execute(interaction: StringSelectMenuInteraction, skullking: Skullking) {

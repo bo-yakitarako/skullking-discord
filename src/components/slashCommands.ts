@@ -13,14 +13,28 @@ const registration = {
   launch: {
     data: new SlashCommandBuilder().setName('launch').setDescription('スカルキングを起動する'),
     execute: async (interaction: ChatInputCommandInteraction) => {
+      if (isSkullkingCategory(interaction)) {
+        await interaction.reply({ content: '個人部屋で、すかき～んはできないよ', flags });
+        return;
+      }
       if (battle.get(interaction) !== null) {
         await interaction.reply({ content: 'もうすかきんしてるよ', flags });
         return;
       }
-      battle.create(interaction);
-      const content = 'すかき～ん';
-      const components = [makeButtonRow('join', 'start')];
+      const skullking = battle.create(interaction);
+      if (skullking === null) {
+        await interaction.reply({ content: '芸術は爆発だ', flags });
+        return;
+      }
+      await skullking.recognizeCategory(interaction);
+      await skullking.recognizeParentChannel();
+      let content = 'すかき～ん';
+      let components = [makeButtonRow('join')];
       await interaction.reply({ content, components });
+      const at = `<@${interaction.user.id}>`;
+      content = `${at} こっちおいでー\n人集まったらスタートボタン押そうね`;
+      components = [makeButtonRow('join', 'start')];
+      await skullking.parent.send({ content, components });
     },
   },
   reset: {
@@ -33,7 +47,7 @@ const registration = {
         return;
       }
       await interaction.reply({ content: 'ばいばーい', flags });
-      await skullking.sendToAll(':bye:');
+      await skullking.sendToAll(':wave:');
       battle.remove(interaction);
     },
   },
@@ -49,4 +63,9 @@ export const slashCommandsInteraction = async (interaction: ChatInputCommandInte
   }
   const commandName = interaction.commandName as CommandName;
   await registration[commandName].execute(interaction);
+};
+
+const isSkullkingCategory = (interaction: ChatInputCommandInteraction) => {
+  const { parent } = interaction.channel as TextChannel;
+  return parent?.name === 'すかき～ん';
 };

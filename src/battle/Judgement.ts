@@ -51,6 +51,9 @@ export class Judgement {
 
   private judgeByColor() {
     const { winnerCard, judgeCard } = this;
+    if (!judgeCard.isColor) {
+      return false;
+    }
     if (winnerCard.isColor) {
       if (judgeCard.isColor && judgeCard.color === winnerCard.color) {
         return judgeCard.number > winnerCard.number;
@@ -64,6 +67,9 @@ export class Judgement {
 
   private judgeBySpecial() {
     const { winnerCard, judgeCard } = this;
+    if (judgeCard.isColor) {
+      return false;
+    }
     if (winnerCard.isColor) {
       return judgeCard.type !== 'escape';
     }
@@ -78,7 +84,7 @@ export class Judgement {
     );
   }
 
-  public updateBonus() {
+  public updateCardBonus() {
     this.cards.forEach((card, index, cards) => {
       if (card.isColor) {
         return;

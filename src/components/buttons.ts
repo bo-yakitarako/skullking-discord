@@ -1,6 +1,12 @@
-import { ButtonBuilder, ButtonInteraction, ButtonStyle, MessageFlags } from 'discord.js';
+import {
+  ButtonBuilder,
+  ButtonInteraction,
+  ButtonStyle,
+  MessageCreateOptions,
+  MessageFlags,
+} from 'discord.js';
 import { battle, Skullking } from '../battle/Skullking';
-import { Card } from '../battle/Card';
+import { makeButtonRow } from '../utils';
 
 const flags = MessageFlags.Ephemeral;
 
@@ -26,26 +32,16 @@ const registration = {
   cpuSet: {
     component: new ButtonBuilder()
       .setCustomId('cpuSet')
-      .setLabel('決定')
+      .setLabel('CPU人数を決定')
       .setStyle(ButtonStyle.Primary),
     async execute(interaction: ButtonInteraction, skullking: Skullking) {
       await skullking.setCpuAndExpect(interaction);
     },
   },
-  startCancel: {
-    component: new ButtonBuilder()
-      .setCustomId('startCancel')
-      .setLabel('キャンセル')
-      .setStyle(ButtonStyle.Secondary),
-    async execute(interaction: ButtonInteraction) {
-      await interaction.deferUpdate();
-      await interaction.message.delete();
-    },
-  },
   expectSend: {
     component: new ButtonBuilder()
       .setCustomId('expectSend')
-      .setLabel('送信')
+      .setLabel('回数を決定')
       .setStyle(ButtonStyle.Primary),
     async execute(interaction: ButtonInteraction, skullking: Skullking) {
       if (!(await skullking.checkStatus(interaction, 'expecting'))) {
@@ -56,9 +52,32 @@ const registration = {
         await interaction.reply({ content: 'だれ？', flags });
         return;
       }
+      if (!player.isTouchedExpectationSelect()) {
+        await interaction.reply({ content: '予想の数えらんでー', flags });
+        return;
+      }
       await interaction.deferUpdate();
-      await interaction.message.delete();
+      // embedのうち予想Timeのものを消して、順番と手札のものは残す
+      const embeds = interaction.message.embeds.slice(0, -1);
+      // 戦績表示のセレクトボックスを残して他は全部消す
+      let components: MessageCreateOptions['components'] = [];
+      if (interaction.message.components.length > 2) {
+        components = interaction.message.components.slice(-1);
+      }
+      if (skullking.isParentInAttendees() && skullking.isParent(interaction)) {
+        components = [...components, makeButtonRow('expectComplete')];
+      }
+      await interaction.message.edit({ embeds, components });
       await player.submitExpectation();
+    },
+  },
+  expectComplete: {
+    component: new ButtonBuilder()
+      .setCustomId('expectComplete')
+      .setLabel('全員の予想が終わったら押すやつ')
+      .setStyle(ButtonStyle.Success),
+    async execute(interaction: ButtonInteraction, skullking: Skullking) {
+      await skullking.completeExpectation(interaction);
     },
   },
   putOut: {
@@ -78,7 +97,7 @@ const registration = {
       await player.putOut(interaction);
     },
   },
-  tigresPirates: tigresButtonGenerator('pirate'),
+  tigresPirate: tigresButtonGenerator('pirate'),
   tigresEscape: tigresButtonGenerator('escape'),
   bye: {
     component: new ButtonBuilder()
@@ -92,7 +111,7 @@ const registration = {
   reset: {
     component: new ButtonBuilder()
       .setCustomId('reset')
-      .setLabel('ゲームを終わる')
+      .setLabel('やめる')
       .setStyle(ButtonStyle.Secondary),
     async execute(interaction: ButtonInteraction, skullking: Skullking) {
       await skullking.reset(interaction);
@@ -102,9 +121,9 @@ const registration = {
 
 function tigresButtonGenerator(type: 'pirate' | 'escape') {
   const label = type === 'pirate' ? '海賊' : '逃走';
-  const emoji = Card.getTigresEmoji(type);
+  const emoji = type === 'pirate' ? '⚔️' : '🏃';
   const component = new ButtonBuilder()
-    .setCustomId(`tigres-${type}`)
+    .setCustomId(`tigres${type.charAt(0).toUpperCase() + type.slice(1)}`)
     .setLabel(label)
     .setStyle(ButtonStyle.Primary)
     .setEmoji(emoji);
@@ -114,8 +133,8 @@ function tigresButtonGenerator(type: 'pirate' | 'escape') {
       await interaction.reply({ content: 'だれ？', flags });
       return;
     }
-    await interaction.message.delete();
     await interaction.deferUpdate();
+    await interaction.message.delete();
     await player.selectTigres(type);
   };
   return { component, execute };

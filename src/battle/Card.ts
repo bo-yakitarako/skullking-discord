@@ -139,10 +139,6 @@ export class Card {
     return { label, emoji };
   }
 
-  public static getTigresEmoji(type: 'pirate' | 'escape') {
-    return emojis[type];
-  }
-
   public static generateDeck() {
     const colors: Color[] = ['green', 'yellow', 'purple', 'black'];
     let cards = colors.reduce((pre, cur) => {

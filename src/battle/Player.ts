@@ -1,11 +1,10 @@
 import {
   ButtonInteraction,
+  ChannelType,
   EmbedField,
-  Guild,
-  Interaction,
   MessageFlags,
   StringSelectMenuInteraction,
-  User,
+  TextChannel,
 } from 'discord.js';
 import { Message, Skullking } from './Skullking';
 import { buildEmbed, makeButtonRow, makeSelectMenuRow } from '../utils';
@@ -16,9 +15,8 @@ const flags = MessageFlags.Ephemeral;
 export class Player {
   private discordId: string;
   private displayName: string;
-  private user: User | null = null;
+  private channel: TextChannel | null = null;
   private skullking: Skullking;
-  private guild: Guild | null;
   private cardsHand: Card[] = [];
   private selectedCountExpected: number | null = null;
   private selectedCardIndex: number | null = null;
@@ -29,18 +27,15 @@ export class Player {
   private collectedCards: Card[] = [];
   private goldBonus = 0;
 
-  constructor(interaction: Interaction | number, skullking: Skullking) {
+  constructor(interaction: ButtonInteraction | number, skullking: Skullking) {
     this.skullking = skullking;
     if (typeof interaction === 'number') {
       this.discordId = `computer${interaction}`;
       this.displayName = `コンピューター${interaction}`;
-      this.guild = null;
       return;
     }
     this.discordId = interaction.user.id;
-    this.user = interaction.user;
-    this.guild = interaction.guild;
-    this.displayName = this.getDisplayName();
+    this.displayName = this.getDisplayName(interaction);
   }
 
   public get id() {
@@ -51,44 +46,68 @@ export class Player {
     return this.displayName;
   }
 
-  public get cp() {
-    return this.user === null;
+  public get at() {
+    return `<@${this.id}>`;
   }
 
-  private getDisplayName() {
-    return this.guild?.members.cache.get(this.discordId)?.displayName ?? this.user!.displayName;
+  public get cp() {
+    return this.channel === null;
+  }
+
+  private getDisplayName({ guild, user }: ButtonInteraction) {
+    return guild?.members.cache.get(this.discordId)?.displayName ?? user!.displayName;
+  }
+
+  public async recognizeChannel() {
+    const { category } = this.skullking;
+    const name = `すかきん部屋-${this.id}`;
+    const existed = category.children.cache.find((c) => c.name === name) as TextChannel;
+    if (existed !== undefined) {
+      await existed.permissionOverwrites.set(this.skullking.permissions(this.id));
+      this.channel = existed;
+    } else {
+      this.channel = await category.guild.channels.create({
+        name,
+        type: ChannelType.GuildText,
+        parent: category,
+        permissionOverwrites: this.skullking.permissions(this.id),
+      });
+    }
+    if (!this.skullking.isParent(this)) {
+      await this.send(`${this.at} こっちおいでー`);
+    }
   }
 
   public async send(message: Message) {
-    await this.user?.send(message);
+    await this.channel?.send(message);
   }
 
   public setHand(cards: Card[]) {
     this.cardsHand = [...cards];
   }
 
-  public async sendExpecting(hasHistory = true) {
-    if (this.user === null) {
-      const count = this.skullking.currentCount;
-      this.countExpected = Math.floor(Math.random() * (count + 1));
+  public async sendExpecting(hasHistory: boolean, isAdding = false) {
+    if (this.channel === null) {
+      this.countExpected = Math.floor(Math.random() * (this.skullking.count + 1));
       return;
     }
     this.countExpected = null;
     this.selectedCountExpected = null;
+    const content = `${this.skullking.count}戦目やってこうねー`;
     const handEmbed = this.buildHandEmbed();
-    const expectEmbed = buildEmbed('予想𝓣𝓲𝓶𝓮', '勝利数を選んで予想しようね');
+    const alert = isAdding ? '\n**捨て札からカードを補充してるから注意なんだぞ**' : '';
+    const expectEmbed = buildEmbed('予想𝓣𝓲𝓶𝓮', `勝利数を選んで予想しようね${alert}`);
     const embeds = [this.skullking.buildOrderEmbed(), handEmbed, expectEmbed];
-    const { currentCount, historySelectComponent } = this.skullking;
-    const expectComponent = makeSelectMenuRow('expectCount', currentCount);
-    let components = [makeButtonRow('expectSend'), expectComponent];
+    const expectComponent = makeSelectMenuRow('expectCount', this.skullking.count);
+    let components = [expectComponent, makeButtonRow('expectSend')];
     if (hasHistory) {
-      components = [...components, historySelectComponent];
+      components = [...components, this.skullking.historySelectRow];
     }
-    await this.send({ embeds, components });
+    await this.send({ content, embeds, components });
   }
 
   public buildCountField(): EmbedField {
-    const name = `${this.name}の現状`;
+    const name = `${this.name}くんの現状`;
     const value = `予想: ${this.countExpected}\n勝数: ${this.countActual}`;
     return { name, value, inline: false };
   }
@@ -110,7 +129,7 @@ export class Player {
   }
 
   public buildHistoryEmbed() {
-    const title = `${this.name}の戦績！`;
+    const title = `${this.name}くんの戦績！`;
     const description = `合計**${this.point}点**`;
     const fields = this.history.map((point, index) => ({
       name: `${index + 1}戦目`,
@@ -120,14 +139,21 @@ export class Player {
     return buildEmbed(title, description, 'info', fields);
   }
 
+  public isTouchedExpectationSelect() {
+    return this.selectedCountExpected !== null;
+  }
+
   public async submitExpectation() {
-    if (this.selectedCountExpected === null) {
-      await this.send('予想の数えらんでー');
+    if (this.countExpected !== null) {
+      await this.send('もう決まっちゃってるねえ');
       return;
     }
     this.countExpected = this.selectedCountExpected;
-    await this.send(`${this.countExpected}回だねーおっけー`);
-    await this.skullking.checkExpectationAndStartPutting();
+    const content = `${this.countExpected}回だねーおっけー`;
+    if (!this.skullking.isParent(this)) {
+      await this.skullking.parent.send(`${this.name}くんが予想できたよ`);
+    }
+    await this.send({ content });
   }
 
   public get expectation() {
@@ -136,8 +162,15 @@ export class Player {
 
   public buildTurnEmbeds() {
     const info = buildEmbed('出しまくりよ', '順番きちゃったんでカード出そうね');
-    const submitCardsEmbed = this.skullking.buildSubmitCardsEmbed();
-    return [info, submitCardsEmbed, this.buildHandEmbed()];
+    const putOutsEmbed = this.skullking.buildPutOutsEmbed();
+    if (putOutsEmbed !== null) {
+      return [info, putOutsEmbed, this.buildHandEmbed()];
+    }
+    return [info, this.buildHandEmbed()];
+  }
+
+  public buildCardSelectRow() {
+    return makeSelectMenuRow('cardSelect', this.cardsHand, this.skullking.color);
   }
 
   public selectCard(interaction: StringSelectMenuInteraction) {
@@ -150,9 +183,10 @@ export class Player {
       return;
     }
     await interaction.deferUpdate();
+    await interaction.message.edit({ components: [] });
     const card = this.cardsHand[this.selectedCardIndex];
     if ('type' in card && card.type === 'tigres' && card.tigresType === null) {
-      const row = makeButtonRow('tigresPirates', 'tigresEscape');
+      const row = makeButtonRow('tigresPirate', 'tigresEscape');
       await this.send({ content: 'ティグレスどっちー？', components: [row] });
       return;
     }
@@ -171,6 +205,9 @@ export class Player {
     const cardIndex = indexes[Math.floor(Math.random() * indexes.length)];
     const card = this.cardsHand.splice(cardIndex, 1)[0];
     card.setOwner(this);
+    if (card.type === 'tigres') {
+      card.tigresType = Math.random() < 0.5 ? 'pirate' : 'escape';
+    }
     return card;
   }
 
