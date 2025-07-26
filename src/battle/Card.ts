@@ -7,7 +7,7 @@ type Special = 'skullking' | 'pirate' | 'mermaid' | 'escape' | 'tigres';
 type ColorParams = [Color, number];
 type SpecialParams = ['skullking' | 'pirate' | 'mermaid' | 'tigres'];
 type EscapeParams = ['escape', 'gold' | 'kraken' | null];
-type Params = ColorParams | SpecialParams | EscapeParams | [Card];
+type Params = ColorParams | SpecialParams | EscapeParams;
 
 const cardValue = {
   green: ':green_square:',
@@ -41,31 +41,17 @@ export class Card {
   public type: 'color' | Special;
   public color: Color = 'black';
   public number = 0;
-  public bonus = 0;
   public escapeType: 'gold' | 'kraken' | null = null;
   public tigresType: 'pirate' | 'escape' | null = null;
   public owner: Player | null = null;
+  public beatCount = 0;
 
   constructor(...params: Params) {
-    if (params[0] instanceof Card) {
-      const c = params[0];
-      this.type = c.type === 'tigres' ? c.tigresType! : c.type;
-      this.color = c.color;
-      this.number = c.number;
-      this.bonus = c.bonus;
-      this.escapeType = c.escapeType;
-      this.tigresType = null;
-      this.owner = c.owner;
-      return;
-    }
     if (typeof params[1] === 'number') {
       const [color, number] = params;
       this.type = 'color';
       this.color = color;
       this.number = number;
-      if (number === 14) {
-        this.bonus = color === 'black' ? 20 : 10;
-      }
       return;
     }
     const [type] = params;
@@ -88,13 +74,13 @@ export class Card {
     return this.owner?.name ?? '';
   }
 
-  public get judgeClone(): Card {
-    return new Card(this);
+  public is(type: 'pirate' | 'escape') {
+    return this.type === type || this.tigresType === type;
   }
 
   public initialize() {
     this.tigresType = null;
-    this.bonus = 0;
+    this.beatCount = 0;
     this.owner = null;
   }
 
@@ -152,5 +138,26 @@ export class Card {
     cards = [...cards, ...[...Array(2)].map(() => new Card('escape', 'gold'))];
     cards = [...cards, new Card('escape', 'kraken')];
     return shuffle(cards);
+  }
+
+  public static sort(cards: Card[]) {
+    return [...cards].sort((a, b) => {
+      if (a.type === 'escape' && b.type === 'escape') {
+        const order = [null, 'gold', 'kraken'] as const;
+        return order.indexOf(a.escapeType) - order.indexOf(b.escapeType);
+      }
+      if (!a.isColor && !b.isColor) {
+        const order = ['pirate', 'mermaid', 'skullking', 'escape', 'tigres'];
+        return order.indexOf(a.type) - order.indexOf(b.type);
+      }
+      if (a.isColor && b.isColor) {
+        if (a.color === b.color) {
+          return a.number - b.number;
+        }
+        const order = ['green', 'yellow', 'purple', 'black'] as const;
+        return order.indexOf(a.color) - order.indexOf(b.color);
+      }
+      return a.isColor && !b.isColor ? -1 : 1;
+    });
   }
 }

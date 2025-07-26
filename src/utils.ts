@@ -69,3 +69,7 @@ export const buildEmbed = (
   }
   return embed;
 };
+
+export const sign = (number: number) => {
+  return number > 0 ? '+' : '';
+};

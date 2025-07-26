@@ -293,6 +293,9 @@ export class Skullking {
         break;
       }
       const card = player.putOutByCp();
+      if (card.isColor && this.currentColor === null) {
+        this.currentColor = card.color;
+      }
       this.currentPutOuts = [...this.currentPutOuts, card];
       baseEmbeds = [...baseEmbeds, this.buildCardEmbed(card)];
       this.playerTurnIndex += 1;
@@ -331,7 +334,7 @@ export class Skullking {
   }
 
   public async submitCard(card: Card) {
-    if ('color' in card && this.currentColor === null) {
+    if (card.isColor && this.currentColor === null) {
       this.currentColor = card.color;
     }
     this.currentPutOuts = [...this.currentPutOuts, card];
@@ -352,7 +355,7 @@ export class Skullking {
       this.currentPutOuts.forEach((card) => card.initialize());
       this.deadCards = [...this.deadCards, ...this.currentPutOuts];
     } else {
-      judgement.updateCardBonus();
+      judgement.updateWinningCardBeatCount();
       judgement.winner.win();
       judgement.winner.collectCards(this.currentPutOuts);
     }
@@ -388,7 +391,7 @@ export class Skullking {
   }
 
   private async finishOneGame(alreadyEmbeds: EmbedBuilder[]) {
-    this.players.forEach((p) => p.updateGoldBonus());
+    this.players.forEach((p) => p.calculateBonus());
     const fields = this.players.map((p) => p.buildPointField());
     const resultEmbed = buildEmbed('今回の得点は...！？', '', 'info', fields);
     await this.sendToAll({ embeds: [...alreadyEmbeds, resultEmbed] });
@@ -429,11 +432,13 @@ export class Skullking {
     let embeds = [rankEmbed, ...resultEmbeds];
     let components = [makeButtonRow('join')];
     await this.channel.send({ embeds, components });
-    embeds = [rankEmbed];
     components = [makeButtonRow('bye')];
-    await this.sendToPlayers({ embeds, components });
-    components = [makeButtonRow('start', 'reset')];
+    for (const player of this.attendees) {
+      embeds = [rankEmbed, player.buildHistoryEmbed()];
+      await player.send({ embeds, components });
+    }
     embeds = [buildEmbed('もっかいやるかやめるか', 'やめる場合はやめるボタン押しといてけろ～')];
+    components = [makeButtonRow('start', 'reset')];
     await this.parent.send({ embeds, components });
   }
 
@@ -449,12 +454,6 @@ export class Skullking {
     return makeSelectMenuRow('history', this.attendees);
   }
 
-  public async sendToPlayers(message: Message) {
-    for (const player of this.players) {
-      await player.send(message);
-    }
-  }
-
   public async send(message: Message) {
     await this.channel.send(message);
     if (!this.isParentInAttendees()) {
@@ -464,7 +463,7 @@ export class Skullking {
 
   public async sendToAll(message: Message) {
     await this.send(message);
-    await this.sendToPlayers(message);
+    await Promise.all(this.attendees.map((p) => p.send(message)));
   }
 
   public async bye(interaction: ButtonInteraction) {

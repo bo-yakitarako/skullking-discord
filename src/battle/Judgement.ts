@@ -1,21 +1,16 @@
 import { Card } from './Card';
-import { Player } from './Player';
 
 export class Judgement {
   private cards: Card[];
-  private gameWinner: Player;
-  private judgeCard: Card;
   private winnerCard: Card;
 
   constructor(cards: Card[]) {
     this.cards = [...cards];
-    this.winnerCard = cards[0].judgeClone;
-    this.judgeCard = cards[1].judgeClone;
-    this.gameWinner = this.judgeWinner();
+    this.winnerCard = this.judgeWinnerCard();
   }
 
   public get winner() {
-    return this.gameWinner;
+    return this.winnerCard.owner!;
   }
 
   public get hasKraken() {
@@ -26,31 +21,28 @@ export class Judgement {
     return this.winnerCard.value;
   }
 
-  private judgeWinner() {
+  private judgeWinnerCard() {
     if (this.hasAllSpecial()) {
-      this.winnerCard = this.cards.find(({ type }) => type === 'mermaid')!;
-      return this.winnerCard.owner!;
+      return this.cards.find(({ type }) => type === 'mermaid')!;
     }
+    let winnerCard = this.cards[0];
     for (const card of this.cards.slice(1)) {
-      this.judgeCard = card.judgeClone;
-      if (this.judgeByColor() || this.judgeBySpecial()) {
-        this.winnerCard = this.judgeCard;
+      if (this.judgeByColor(card, winnerCard) || this.judgeBySpecial(card, winnerCard)) {
+        winnerCard = card;
       }
     }
-    return this.winnerCard.owner!;
+    return winnerCard;
   }
 
   private hasAllSpecial() {
-    const cards = this.cards.map((p) => p.judgeClone);
     return (
-      cards.some(({ type }) => type === 'pirate') &&
-      cards.some(({ type }) => type === 'mermaid') &&
-      cards.some(({ type }) => type === 'skullking')
+      this.cards.some((card) => card.is('pirate')) &&
+      this.cards.some(({ type }) => type === 'mermaid') &&
+      this.cards.some(({ type }) => type === 'skullking')
     );
   }
 
-  private judgeByColor() {
-    const { winnerCard, judgeCard } = this;
+  private judgeByColor(judgeCard: Card, winnerCard: Card) {
     if (!judgeCard.isColor) {
       return false;
     }
@@ -62,47 +54,34 @@ export class Judgement {
         return true;
       }
     }
-    return winnerCard.type === 'escape';
+    return winnerCard.is('escape');
   }
 
-  private judgeBySpecial() {
-    const { winnerCard, judgeCard } = this;
+  private judgeBySpecial(judgeCard: Card, winnerCard: Card) {
     if (judgeCard.isColor) {
       return false;
     }
     if (winnerCard.isColor) {
       return judgeCard.type !== 'escape';
     }
-    if (judgeCard.type === 'escape') {
+    if (judgeCard.is('escape')) {
       return false;
     }
     return (
-      winnerCard.type === 'escape' ||
-      (judgeCard.type === 'pirate' && winnerCard.type === 'mermaid') ||
+      winnerCard.is('escape') ||
+      (judgeCard.is('pirate') && winnerCard.type === 'mermaid') ||
       (judgeCard.type === 'mermaid' && winnerCard.type === 'skullking') ||
-      (judgeCard.type === 'skullking' && winnerCard.type === 'pirate')
+      (judgeCard.type === 'skullking' && winnerCard.is('pirate'))
     );
   }
 
-  public updateCardBonus() {
-    this.cards.forEach((card, index, cards) => {
-      if (card.isColor) {
-        return;
-      }
-      const { type } = card;
-      if (type === 'mermaid' && Judgement.includeCount(cards, 'skullking')) {
-        card.bonus = 50;
-      }
-      if (type !== 'skullking') {
-        return;
-      }
-      const prevCards = cards.slice(0, index);
-      const piratesCount = Judgement.includeCount(prevCards, 'pirate');
-      card.bonus = piratesCount * 30;
-    });
-  }
-
-  private static includeCount(cards: Card[], type: 'pirate' | 'skullking') {
-    return cards.filter((c) => c.type === type).length;
+  public updateWinningCardBeatCount() {
+    const { type } = this.winnerCard;
+    if (type !== 'mermaid' && type !== 'skullking') {
+      return;
+    }
+    const target = { mermaid: 'skullking', skullking: 'pirate' } as const;
+    const prevCards = this.cards.slice(0, this.cards.indexOf(this.winnerCard));
+    this.winnerCard.beatCount = prevCards.filter((c) => c.type === target[type]).length;
   }
 }

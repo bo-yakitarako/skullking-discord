@@ -7,10 +7,21 @@ import {
   TextChannel,
 } from 'discord.js';
 import { Message, Skullking } from './Skullking';
-import { buildEmbed, makeButtonRow, makeSelectMenuRow } from '../utils';
+import { buildEmbed, makeButtonRow, makeSelectMenuRow, sign } from '../utils';
 import { Card, Color } from './Card';
 
 const flags = MessageFlags.Ephemeral;
+
+const bonusPoint = {
+  green: 10,
+  yellow: 10,
+  purple: 10,
+  black: 20,
+  mermaid: 50,
+  skullking: 30,
+  goldGet: 20,
+  goldGive: 20,
+};
 
 export class Player {
   private discordId: string;
@@ -25,7 +36,7 @@ export class Player {
   private history: number[] = [];
   private gamePoint = 0;
   private collectedCards: Card[] = [];
-  private goldBonus = 0;
+  private goldGivenCount = 0;
 
   constructor(interaction: ButtonInteraction | number, skullking: Skullking) {
     this.skullking = skullking;
@@ -83,7 +94,7 @@ export class Player {
   }
 
   public setHand(cards: Card[]) {
-    this.cardsHand = [...cards];
+    this.cardsHand = Card.sort(cards);
   }
 
   public async sendExpecting(hasHistory: boolean, isAdding = false) {
@@ -242,30 +253,36 @@ export class Player {
     return this.cardsHand.length === 0;
   }
 
-  public updateGoldBonus() {
-    this.goldBonus = 0;
-    if (!this.isSuccess()) {
-      return;
-    }
-    this.collectedCards.forEach(({ escapeType, owner }) => {
-      if (escapeType === 'gold' && owner?.isSuccess()) {
-        this.goldBonus += 20;
-      }
-    });
-  }
-
   public buildPointField(): EmbedField {
-    const score = this.calculateCurrentScore();
+    const baseScore = this.calculateBaseScore();
+    const bonus = this.calculateBonus();
+    const score = baseScore + Object.values(bonus).reduce((sum, point) => sum + point, 0);
     this.gamePoint += score;
     this.history = [...this.history, score];
     const { point } = this;
-    const sign = score > 0 ? '+' : '';
-    const totalSign = point > 0 ? '+' : '';
-    return {
-      name: `${this.name}くんの結果`,
-      value: `**${sign}${score}点** (合計${totalSign}${point}点)`,
-      inline: false,
-    };
+    let value = `**${sign(score)}${score}点** (合計${sign(point)}${point}点)`;
+    const bonusEntries = Object.entries(bonus) as [keyof typeof bonusPoint, number][];
+    if (bonusEntries.length > 0) {
+      value += `\n基礎点: +${baseScore}点 (予想: ${this.countExpected}, 勝数: ${this.countActual})`;
+      bonusEntries.forEach(([key, bonusScore]) => {
+        if (key === 'mermaid' || key === 'skullking') {
+          const emoji = key === 'mermaid' ? ':mermaid:' : ':skull:';
+          const target = { mermaid: ':skull:', skullking: ':crossed_swords:' };
+          value += `\n${emoji}で${target[key]}を倒した: +${bonusScore}点`;
+          return;
+        }
+        if (key === 'goldGet' || key === 'goldGive') {
+          const state = key === 'goldGet' ? '獲得' : '献上';
+          value += `\n:gem:を${state}した: +${bonusScore}点`;
+          return;
+        }
+        const square = key === 'black' ? ':black_large_square:' : `:${key}_square:`;
+        value += `\n${square}14 を獲得した: +${bonusScore}点`;
+      });
+    } else {
+      value += `\n予想: ${this.countExpected}, 勝数: ${this.countActual}`;
+    }
+    return { name: `${this.name}くんの結果`, value, inline: false };
   }
 
   public get point() {
@@ -277,18 +294,44 @@ export class Player {
     return `**${this.name}**: ${sign}${this.gamePoint}点`;
   }
 
-  private calculateCurrentScore() {
+  private calculateBaseScore() {
     const countDiff = Math.abs(this.countExpected! - this.countActual);
     const { count } = this.skullking;
     if (countDiff > 0) {
       return -(this.countExpected === 0 ? count : countDiff) * 10;
     }
-    const basic = this.countActual === 0 ? count * 10 : this.countActual * 20;
-    let bonus = this.goldBonus;
-    for (const card of this.collectedCards) {
-      bonus += card.bonus;
+    return this.countActual === 0 ? count * 10 : this.countActual * 20;
+  }
+
+  // eslint-disable-next-line complexity
+  public calculateBonus() {
+    const bonus: Partial<typeof bonusPoint> = {};
+    if (!this.isSuccess()) {
+      return bonus;
     }
-    return basic + bonus;
+    const sorted = Card.sort(this.collectedCards);
+    for (const { type, color, beatCount, number, escapeType, owner } of sorted) {
+      if (type === 'color' && number === 14) {
+        bonus[color] = bonusPoint[color];
+        continue;
+      }
+      if ((type === 'mermaid' || type === 'skullking') && beatCount > 0) {
+        bonus[type] = bonusPoint[type] * beatCount;
+        continue;
+      }
+      if (escapeType === 'gold' && owner?.isSuccess()) {
+        owner!.giveGold();
+        bonus.goldGet = (bonus.goldGet ?? 0) + bonusPoint.goldGet;
+      }
+    }
+    if (this.goldGivenCount > 0) {
+      bonus.goldGive = bonusPoint.goldGive * this.goldGivenCount;
+    }
+    return bonus;
+  }
+
+  public giveGold() {
+    this.goldGivenCount += 1;
   }
 
   public initializeOneGame() {
@@ -296,6 +339,7 @@ export class Player {
     this.countActual = 0;
     const cards = [...this.collectedCards];
     this.collectedCards = [];
+    this.goldGivenCount = 0;
     cards.forEach((card) => card.initialize());
     return cards;
   }
