@@ -357,6 +357,7 @@ export class Skullking {
       return;
     }
     const judgement = new Judgement(this.currentPutOuts);
+    this.reorder(judgement);
     if (judgement.hasKraken) {
       this.currentPutOuts.forEach((card) => card.initialize());
       this.deadCards = [...this.deadCards, ...this.currentPutOuts];
@@ -365,7 +366,6 @@ export class Skullking {
       judgement.winner.win();
       judgement.winner.collectCards(this.currentPutOuts);
     }
-    this.reorder(judgement);
     this.playerTurnIndex = 0;
     this.currentColor = null;
     this.currentPutOuts = [];
