@@ -480,11 +480,7 @@ export class Skullking {
     this.attendees = this.attendees.filter((p) => p.id !== player.id);
   }
 
-  public async reset(interaction: ButtonInteraction) {
-    if (!(await this.checkParent(interaction)) || !(await this.checkStatus(interaction, 'ready'))) {
-      return;
-    }
-    await interaction.deferUpdate();
+  public async reset(interaction: RepliableInteraction) {
     await this.sendToAll(':wave:');
     battle.remove(interaction);
   }

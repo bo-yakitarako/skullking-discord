@@ -114,6 +114,7 @@ const registration = {
       .setLabel('やめる')
       .setStyle(ButtonStyle.Secondary),
     async execute(interaction: ButtonInteraction, skullking: Skullking) {
+      await interaction.deferUpdate();
       await skullking.reset(interaction);
     },
   },

@@ -47,8 +47,7 @@ const registration = {
         return;
       }
       await interaction.reply({ content: 'ばいばーい', flags });
-      await skullking.sendToAll(':wave:');
-      battle.remove(interaction);
+      await skullking.reset(interaction);
     },
   },
 };
