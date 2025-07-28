@@ -49,6 +49,17 @@ export class Player {
     this.displayName = this.getDisplayName(interaction);
   }
 
+  public initialize() {
+    this.cardsHand = [];
+    this.selectedCountExpected = null;
+    this.selectedCardIndex = null;
+    this.countExpected = null;
+    this.countActual = 0;
+    this.history = [];
+    this.gamePoint = 0;
+    this.collectedCards = [];
+  }
+
   public get id() {
     return this.discordId;
   }

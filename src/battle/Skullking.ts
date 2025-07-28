@@ -206,6 +206,7 @@ export class Skullking {
       return;
     }
     await interaction.deferUpdate();
+    this.attendees.forEach((p) => p.initialize());
     this.players = [...this.attendees];
     this.cpuCount = 0;
     const maxCpuCount = 6 - this.players.length;
