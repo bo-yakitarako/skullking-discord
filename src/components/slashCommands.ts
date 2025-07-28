@@ -25,8 +25,14 @@ const registration = {
         await interaction.reply({ content: '芸術は爆発だ', flags });
         return;
       }
-      await skullking.recognizeCategory(interaction);
-      await skullking.recognizeParentChannel();
+      try {
+        await skullking.recognizeCategory(interaction);
+        await skullking.recognizeParentChannel();
+      } catch {
+        const content = 'すかきんがアクセスできないやつがあるから権限付与か消してやり直してみてね';
+        await interaction.reply({ content, flags });
+        return;
+      }
       let content = 'すかき～ん';
       let components = [makeButtonRow('join')];
       await interaction.reply({ content, components });
