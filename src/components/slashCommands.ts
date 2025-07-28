@@ -18,8 +18,7 @@ const registration = {
         return;
       }
       if (battle.get(interaction) !== null) {
-        await interaction.reply({ content: 'もうすかきんしてるよ', flags });
-        return;
+        battle.remove(interaction);
       }
       const skullking = battle.create(interaction);
       if (skullking === null) {
@@ -31,8 +30,7 @@ const registration = {
       let content = 'すかき～ん';
       let components = [makeButtonRow('join')];
       await interaction.reply({ content, components });
-      const at = `<@${interaction.user.id}>`;
-      content = `${at} こっちおいでー\n人集まったらスタートボタン押そうね`;
+      content = `<@${interaction.user.id}> こっちおいでー\n人集まったらスタートボタン押そうね`;
       components = [makeButtonRow('join', 'start')];
       await skullking.parent.send({ content, components });
     },
