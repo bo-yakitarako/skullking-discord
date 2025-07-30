@@ -74,7 +74,7 @@ export class Card {
     return this.owner?.name ?? '';
   }
 
-  public is(type: 'pirate' | 'escape') {
+  public is(type: 'skullking' | 'pirate' | 'mermaid' | 'escape') {
     return this.type === type || this.tigresType === type;
   }
 

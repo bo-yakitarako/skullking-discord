@@ -23,7 +23,7 @@ export class Judgement {
 
   private judgeWinnerCard() {
     if (this.hasAllSpecial()) {
-      return this.cards.find(({ type }) => type === 'mermaid')!;
+      return this.cards.find(({ is }) => is('mermaid'))!;
     }
     let winnerCard = this.cards[0];
     for (const card of this.cards.slice(1)) {
@@ -36,9 +36,9 @@ export class Judgement {
 
   private hasAllSpecial() {
     return (
-      this.cards.some((card) => card.is('pirate')) &&
-      this.cards.some(({ type }) => type === 'mermaid') &&
-      this.cards.some(({ type }) => type === 'skullking')
+      this.cards.some(({ is }) => is('pirate')) &&
+      this.cards.some(({ is }) => is('mermaid')) &&
+      this.cards.some(({ is }) => is('skullking'))
     );
   }
 
@@ -62,16 +62,16 @@ export class Judgement {
       return false;
     }
     if (winnerCard.isColor) {
-      return judgeCard.type !== 'escape';
+      return !judgeCard.is('escape');
     }
     if (judgeCard.is('escape')) {
       return false;
     }
     return (
       winnerCard.is('escape') ||
-      (judgeCard.is('pirate') && winnerCard.type === 'mermaid') ||
-      (judgeCard.type === 'mermaid' && winnerCard.type === 'skullking') ||
-      (judgeCard.type === 'skullking' && winnerCard.is('pirate'))
+      (judgeCard.is('pirate') && winnerCard.is('mermaid')) ||
+      (judgeCard.is('mermaid') && winnerCard.is('skullking')) ||
+      (judgeCard.is('skullking') && winnerCard.is('pirate'))
     );
   }
 
@@ -82,6 +82,6 @@ export class Judgement {
     }
     const target = { mermaid: 'skullking', skullking: 'pirate' } as const;
     const prevCards = this.cards.slice(0, this.cards.indexOf(this.winnerCard));
-    this.winnerCard.beatCount = prevCards.filter((c) => c.type === target[type]).length;
+    this.winnerCard.beatCount = prevCards.filter((c) => c.is(target[type])).length;
   }
 }
