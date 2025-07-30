@@ -207,12 +207,9 @@ export class Skullking {
     }
     await interaction.deferUpdate();
     this.attendees.forEach((p) => p.initialize());
-    this.players = [...this.attendees];
     this.cpuCount = 0;
-    const maxCpuCount = 6 - this.players.length;
-    const cpuRow = makeSelectMenuRow('cpuCount', maxCpuCount);
-    const setRow = makeButtonRow('cpuSet');
-    const components = [cpuRow, setRow];
+    const maxCpuCount = 6 - this.attendees.length;
+    const components = [makeSelectMenuRow('cpuCount', maxCpuCount), makeButtonRow('cpuSet')];
     this.cpuMessage = await this.parent.send({ content: 'CPU何人入れる？', components });
   }
 
@@ -237,7 +234,7 @@ export class Skullking {
     await Promise.all(this.attendees.map((p) => p.recognizeChannel()));
     this.gameStatus = 'expecting';
     const cps = [...Array(this.cpuCount)].map((_, i) => new Player(i + 1, this));
-    this.players = shuffle([...this.players, ...cps]);
+    this.players = shuffle([...this.attendees, ...cps]);
     this.dealCards();
     await Promise.all(this.players.map((p) => p.sendExpecting(false)));
     const embeds = [this.buildOrderEmbed()];
@@ -251,7 +248,7 @@ export class Skullking {
     const orders = this.players.map((p, i) => `${i + 1}. ${p.name}`);
     if (hasCount) {
       const fields = this.players.map((p) => p.buildCountField());
-      return buildEmbed('順番と現状', orders.join('\n'), 'info', fields);
+      return buildEmbed('順番と現状', orders.join('\n'), fields);
     }
     return buildEmbed('順番', orders.join('\n'));
   }
@@ -325,7 +322,7 @@ export class Skullking {
       value: `${p.expectation}回`,
       inline: false,
     }));
-    return buildEmbed('みんなの予想回数！', '', 'info', fields);
+    return buildEmbed('みんなの予想回数！', fields);
   }
 
   public buildPutOutsEmbed() {
@@ -337,7 +334,7 @@ export class Skullking {
       value: card.value,
       inline: false,
     }));
-    return buildEmbed('今までに出たカード', '', 'info', fields);
+    return buildEmbed('今までに出たカード', fields);
   }
 
   public async submitCard(card: Card) {
@@ -400,7 +397,7 @@ export class Skullking {
   private async finishOneGame(alreadyEmbeds: EmbedBuilder[]) {
     this.players.forEach((p) => p.calculateBonus());
     const fields = this.players.map((p) => p.buildPointField());
-    const resultEmbed = buildEmbed('今回の得点は...！？', '', 'info', fields);
+    const resultEmbed = buildEmbed('今回の得点は...！？', fields);
     await this.sendToAll({ embeds: [...alreadyEmbeds, resultEmbed] });
     const playerDeadCards = this.players.reduce(
       (pre, p) => [...pre, ...p.initializeOneGame()],
@@ -434,7 +431,7 @@ export class Skullking {
     this.cpuCount = 0;
     this.gameCount = 1;
     this.gameStatus = 'ready';
-    const rankEmbed = buildEmbed('結果はっぴょおぉ〜〜', '', 'pirate', fields);
+    const rankEmbed = buildEmbed('結果はっぴょおぉ〜〜', fields, 'pirate');
     const resultEmbeds = rankedPlayers.map((p) => p.buildHistoryEmbed());
     let embeds = [rankEmbed, ...resultEmbeds];
     let components = [makeButtonRow('join')];

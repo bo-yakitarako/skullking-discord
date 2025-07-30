@@ -143,7 +143,7 @@ export class Player {
       const name = `${index + 1}${validIndexes.includes(index) ? '' : ' :x:'}`;
       return { name, value: card.value, inline: true };
     });
-    return buildEmbed('手札', count, 'yellow', fields);
+    return buildEmbed('手札', count, fields, 'yellow');
   }
 
   public selectExpecting(interaction: StringSelectMenuInteraction) {
@@ -155,10 +155,10 @@ export class Player {
     const description = `合計**${this.point}点**`;
     const fields = this.history.map((point, index) => ({
       name: `${index + 1}戦目`,
-      value: `${point > 0 ? '+' : ''}${point}`,
+      value: `${sign(point)}${point}`,
       inline: true,
     }));
-    return buildEmbed(title, description, 'info', fields);
+    return buildEmbed(title, description, fields);
   }
 
   public isTouchedExpectationSelect() {

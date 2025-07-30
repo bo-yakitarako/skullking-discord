@@ -52,12 +52,33 @@ const colors = {
   kraken: 0x8c2643,
 };
 
+type ColorKey = keyof typeof colors;
+type DescriptionParams = [string] | [string, ColorKey];
+type FieldsParams = [EmbedField[]] | [EmbedField[], ColorKey];
+type AllParams = [string, EmbedField[]] | [string, EmbedField[], ColorKey];
 export const buildEmbed = (
   title: string,
-  description = '',
-  color: keyof typeof colors = 'info',
-  fields: EmbedField[] = [],
+  ...params: DescriptionParams | FieldsParams | AllParams
 ) => {
+  let description = '';
+  let fields: EmbedField[] = [];
+  let color: ColorKey = 'info';
+  if (params[0] instanceof Array) {
+    fields = params[0];
+    if (typeof params[1] === 'string') {
+      color = params[1];
+    }
+  } else {
+    description = params[0];
+    if (params[1] instanceof Array) {
+      fields = params[1];
+      if (typeof params[2] === 'string') {
+        color = params[2];
+      }
+    } else if (typeof params[1] === 'string') {
+      color = params[1];
+    }
+  }
   const embed = new EmbedBuilder();
   embed.setTitle(title);
   embed.setColor(colors[color]);
