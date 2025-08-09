@@ -150,7 +150,7 @@ export const button = Object.fromEntries(
 export const buttonInteraction = async (interaction: ButtonInteraction) => {
   const skullking = battle.get(interaction);
   if (skullking === null) {
-    await interaction.reply({ content: '`/launch`しようね', flags });
+    await interaction.reply({ content: '`/skullking`しようね', flags });
     return;
   }
   const customId = interaction.customId as CustomId;

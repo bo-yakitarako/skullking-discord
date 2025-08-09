@@ -100,7 +100,7 @@ export const selectMenuInteraction = async (interaction: StringSelectMenuInterac
   const skullking = battle.get(interaction);
   if (skullking === null) {
     const flags = MessageFlags.Ephemeral;
-    await interaction.reply({ content: '`/launch`しようね', flags });
+    await interaction.reply({ content: '`/skullking`しようね', flags });
     return;
   }
   const customId = interaction.customId as CustomId;

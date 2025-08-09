@@ -10,8 +10,8 @@ import { makeButtonRow } from '../utils';
 const flags = MessageFlags.Ephemeral;
 
 const registration = {
-  launch: {
-    data: new SlashCommandBuilder().setName('launch').setDescription('スカルキングを起動する'),
+  skullking: {
+    data: new SlashCommandBuilder().setName('skullking').setDescription('スカルキングを起動する'),
     execute: async (interaction: ChatInputCommandInteraction) => {
       if (isSkullkingCategory(interaction)) {
         await interaction.reply({ content: '個人部屋で、すかき～んはできないよ', flags });
