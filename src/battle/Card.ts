@@ -75,7 +75,7 @@ export class Card {
   }
 
   public is(type: 'skullking' | 'pirate' | 'mermaid' | 'escape') {
-    return this.type === type || this.tigresType === type;
+    return this.type && (this.type === type || this.tigresType === type);
   }
 
   public initialize() {
