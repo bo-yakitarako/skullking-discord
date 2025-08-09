@@ -23,7 +23,7 @@ export class Judgement {
 
   private judgeWinnerCard() {
     if (this.hasAllSpecial()) {
-      return this.cards.find(({ is }) => is('mermaid'))!;
+      return this.cards.find((card) => card.is('mermaid'))!;
     }
     let winnerCard = this.cards[0];
     for (const card of this.cards.slice(1)) {
@@ -36,9 +36,9 @@ export class Judgement {
 
   private hasAllSpecial() {
     return (
-      this.cards.some(({ is }) => is('pirate')) &&
-      this.cards.some(({ is }) => is('mermaid')) &&
-      this.cards.some(({ is }) => is('skullking'))
+      this.cards.some((card) => card.is('pirate')) &&
+      this.cards.some((card) => card.is('mermaid')) &&
+      this.cards.some((card) => card.is('skullking'))
     );
   }
 
