@@ -1,0 +1,8 @@
+services:
+  skullking-bot:
+    build: .
+    container_name: skullking-bot
+    restart: always
+    environment:
+      TOKEN: ${TOKEN}
+      CLIENT_ID: ${CLIENT_ID}
